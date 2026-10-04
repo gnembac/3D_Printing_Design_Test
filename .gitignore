@@ -1,0 +1,37 @@
+# Secrets and credentials — never commit these
+.env
+.env.*
+secrets/
+*.pem
+*.key
+id_rsa*
+
+# Local, machine-specific Claude Code settings (not shared)
+.claude/settings.local.json
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+
+# CAD / slicer working files (not released exports)
+*.FCStd1
+*.FCBak
+*.gcode
+*.3mf.bak
+
+# Local, non-reproducible scratch output
+/tmp/
+*.log
