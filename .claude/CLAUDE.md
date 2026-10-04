@@ -303,8 +303,9 @@ is committed or pushed:
 - Root `README.md` must explain: what the project is, the directory
   structure, how to reproduce an experiment, and links to
   `docs/experimental-protocols/` and the license.
-- `LICENSE` must be confirmed by the user before the repo is made public;
-  until then, treat any LICENSE file in the repo as a draft (`ASSUMPTION`).
+- Licensed under the Apache License 2.0 (`LICENSE`, as chosen on GitHub
+  repo creation). Do not propose or scaffold a different license without
+  explicit user approval.
 - Use Conventional-Commits-style messages (`feat:`, `fix:`, `docs:`,
   `data:`, `exp:`) only when the user explicitly asks for a commit — never
   commit automatically.

@@ -1,4 +1,6 @@
-# 3D Printing Design & Test
+# 3D_Printing_Design_Test
+
+Learning 3D Printing - Design - Construction - Materials
 
 Engineering **learning project** for reproducible, scientifically
 documented 3D-printing experiments and parametric part development
@@ -78,6 +80,4 @@ without a dedicated validation and compliance plan.
 
 ## License
 
-See [`LICENSE`](LICENSE). **Draft / not yet confirmed** — treat as an
-`ASSUMPTION` until explicitly approved (code: MIT; everything else:
-CC BY 4.0), per `.claude/CLAUDE.md` "GitHub repository conventions".
+Licensed under the [Apache License 2.0](LICENSE).
