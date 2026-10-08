@@ -1,0 +1,39 @@
+# Continuous delivery: a tag "REL-*" is the explicit user approval for a
+# release (see .claude/CLAUDE.md revision convention). The workflow re-runs
+# all checks, regenerates the export manifest and publishes a GitHub Release
+# with the released exports attached.
+name: Release
+
+on:
+  push:
+    tags: ["REL-*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: ruff format --check .
+      - run: ruff check .
+      - run: pytest -q
+      - run: python scripts/check_repo_hygiene.py
+      - run: python scripts/validate_cad_exports.py
+      - name: Manifest is up to date
+        run: |
+          python scripts/generate_manifest.py
+          git diff --exit-code data/results/export-manifest.csv
+      - name: Package exports
+        run: |
+          zip -r "exports_${GITHUB_REF_NAME}.zip" exports data/results/export-manifest.csv \
+            -x "*/README.md"
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: exports_${{ github.ref_name }}.zip
+          generate_release_notes: true

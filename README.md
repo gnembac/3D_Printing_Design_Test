@@ -1,5 +1,7 @@
 # 3D_Printing_Design_Test
 
+[![CI](https://github.com/gnembac/3D_Printing_Design_Test/actions/workflows/ci.yml/badge.svg)](https://github.com/gnembac/3D_Printing_Design_Test/actions/workflows/ci.yml)
+
 Learning 3D Printing - Design - Construction - Materials
 
 Engineering **learning project** for reproducible, scientifically
@@ -77,6 +79,15 @@ DfM pre-check against Supplier CN-A published rules (manufacturer data):
 ```bash
 python scripts/supplier_dfm_check.py FDM --max-dim 80 --wall 2.0 --hole-dia 3.2
 ```
+
+## CI/CD
+
+| Workflow | Trigger | Checks / action |
+|---|---|---|
+| [`ci.yml`](.github/workflows/ci.yml) | push to `main`/`claude/**`, pull request, manual | `ruff format --check`, `ruff check`, `pytest` (Python 3.12 + 3.13), CAD export validation incl. watertight check, export manifest up to date, public-repo hygiene (no secrets files, no files > 10 MB) |
+| [`release.yml`](.github/workflows/release.yml) | tag `REL-*` (explicit release approval) | all checks again, then GitHub Release with `exports/` + manifest as ZIP |
+
+Local setup: `pip install -r requirements-dev.txt`.
 
 ## Status and scope
 
