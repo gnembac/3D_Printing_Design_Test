@@ -370,6 +370,12 @@ ruff check .
 pytest -q
 ```
 
+The same checks run in GitHub Actions (`.github/workflows/ci.yml`, plus
+`python scripts/check_repo_hygiene.py`); a pull request is only mergeable
+with green CI. Releases are published by pushing a tag `REL-*`
+(`.github/workflows/release.yml`) — create such a tag only with explicit
+user approval.
+
 Before exporting released CAD:
 
 ```bash
