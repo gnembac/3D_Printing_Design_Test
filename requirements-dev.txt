@@ -2,3 +2,4 @@
 ruff==0.16.8
 pytest==9.1.1
 trimesh==4.5.3
+networkx==3.4.2  # required by trimesh 3MF loader (validate_cad_exports.py)

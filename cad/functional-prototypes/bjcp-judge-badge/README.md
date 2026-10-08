@@ -86,6 +86,10 @@ Hinweis PLA: formstabil nur bis ca. 55–60 °C (nicht im heißen Auto liegen la
 
 ## 8 Reproduktion
 
+> **STEP:** Das Generator-Skript erzeugt zusätzlich `exports/step/BJCP_badge_*.step` (≈ 11 MB, Textkurven/Konturflächen).
+> Die Datei liegt über der 10-MB-Grenze des Repo-Checks und ist daher **nicht eingecheckt** (aus dem Skript jederzeit
+> reproduzierbar; Git-LFS-Konfiguration: `ASSUMPTION` nicht vorhanden).
+
 ```bash
 python -m venv .venv && .venv/bin/pip install cadquery
 .venv/bin/python cad/functional-prototypes/bjcp-judge-badge/bjcp_badge.py --out exports \
