@@ -1,12 +1,12 @@
-# JLC3DP Design Guidelines — Consolidated (DfAM Quick Reference)
+# Supplier CN-A Design Guidelines — Consolidated (DfAM Quick Reference)
 
 | | |
 |---|---|
-| Version | 1.0 |
-| Status | 2026-10-08 18:17 UTC |
-| Data class | Manufacturer data (JLC3DP), source IDs see [`README.md`](README.md#source-register) |
-| Machine-readable | [`jlc3dp_design_rules_2026-10-08.csv`](../../../data/material-datasheets/jlc3dp/jlc3dp_design_rules_2026-10-08.csv) |
-| Check script | `python scripts/jlc3dp_dfm_check.py <PROCESS> --max-dim <mm> [--wall ...]` |
+| Version | 1.1 |
+| Status | 2026-10-08 18:24 UTC (1.1: anonymized, prices removed) |
+| Data class | Manufacturer data (Supplier CN-A) — **indicative values (Anhaltswerte) only**, source IDs see [`README.md`](README.md#source-register) |
+| Machine-readable | [`cn-a_design_rules_2026-10-08.csv`](../../../data/material-datasheets/supplier-cn-a/cn-a_design_rules_2026-10-08.csv) |
+| Check script | `python scripts/supplier_dfm_check.py <PROCESS> --max-dim <mm> [--wall ...]` |
 
 Values are **supplier minimums for simple geometry**, not guaranteed
 capabilities and not own results. Where the source contradicts itself,
@@ -16,7 +16,7 @@ the conservative value is marked **bold** and governs.
 
 | Process | Material | Max. L×W×H (mm) | Min. (mm) |
 |---|---|---|---|
-| SLA | Ledo 6060, 9600, Black, JLC Black, 8001, CBY | 780×780×530 | 5×5×5 / 10×2×2 |
+| SLA | Ledo 6060, 9600, Black, Black Resin B, 8001, CBY | 780×780×530 | 5×5×5 / 10×2×2 |
 | SLA | Imagine Black, Grey, 8228 | 580×580×380 (8228: 390) | 5×5×5 / 10×2×2 |
 | WJP | Full Color Resin | 380×330×230 | 5×5×5 / 10×2×2 |
 | MJF | PA12-HP, PA12S-HP, PA11-HP | 370×276×360 | 5×5×5 / 10×2×2 |
@@ -48,8 +48,8 @@ carrier or switch to SLA/MJF/SLS.
   200 mm value; treat as `ASSUMPTION`.
 
 **Comparison with own FDM start values** (spec §7.1, 0.4 mm nozzle): own
-"general part" 1.2–2.0 mm vs. JLC3DP 1.6–2.5 mm by size. For supplier
-packages the JLC3DP value governs; for own printers own measured data
+"general part" 1.2–2.0 mm vs. Supplier CN-A 1.6–2.5 mm by size. For supplier
+packages the Supplier CN-A value governs; for own printers own measured data
 governs once available.
 
 ## 3. Embossed / engraved details (G3)
@@ -143,7 +143,7 @@ Conditions: no warp, no oil-spray or paint. Holes generally come out
 | Elastomer | FDM TPU 95A, PEBA 85A | PEBA elongation 600 %, −70 °C | wall ≥ 1.6 mm |
 | Metal, small | BJ-316L (≤ 100 mm) | 561 MPa UTS, 50 % elongation, cheaper than SLM | warp > 50 mm |
 | Metal, larger | SLM 316L | 390×290×390 mm | no datasheet in source (k.A.) |
-| Colour models | WJP Full Color, MJF PAC-HP | integrated colour | WJP not outdoor; PAC $17 from |
+| Colour models | WJP Full Color, MJF PAC-HP | integrated colour | WJP not outdoor; PAC wall ≥ 2.0 mm |
 | Experiments / traceability | any **except** X Resin | — | X Resin = random material |
 
 Surface options (ST, CP): resin parts with or without surface treatment
@@ -156,4 +156,4 @@ only (gloss or matte), applied manually — not an industrial colour finish.
 |---|---|---|
 | EX-nnn-clearance-coupon-fdm | Exercise | Do the FDM gaps (0.5 mm assembly / moving) hold on the own printer? Step 0.2–0.8 mm. |
 | EX-nnn-hole-undersize-fdm | Exercise | Measure hole undersize vs. Ø (1.5–10 mm) and wall thickness; compare with ±0.4 mm. |
-| DOE-nnn-outsourced-vs-own | Experiment | Same coupon in own FDM vs. JLC3DP FDM/MJF/SLA: dimensional deviation, mass, cost, orientation (requires explicit approval before any order). |
+| DOE-nnn-outsourced-vs-own | Experiment | Same coupon in own FDM vs. Supplier CN-A FDM/MJF/SLA: dimensional deviation, mass, cost, orientation (requires explicit approval before any order). |

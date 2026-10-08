@@ -5,4 +5,4 @@ Background knowledge base and the original project specification (see `project-s
 | Path | Content |
 |---|---|
 | `project-specification-de.md` | original German project specification |
-| `jlc3dp/` | JLC3DP (China) design rules, material analysis and source register — manufacturer data |
+| `supplier-cn-a/` | Supplier CN-A (China, anonymized) design rules, material analysis and source register — manufacturer data |

@@ -1,14 +1,14 @@
-"""Design-for-manufacturing pre-check against JLC3DP published design rules.
+"""Design-for-manufacturing pre-check against Supplier CN-A published design rules.
 
-Rule source: data/material-datasheets/jlc3dp/jlc3dp_design_rules_<date>.csv
-(manufacturer data, see docs/reference/jlc3dp/README.md).
+Rule source: data/material-datasheets/supplier-cn-a/cn-a_design_rules_<date>.csv
+(manufacturer data, see docs/reference/supplier-cn-a/README.md).
 
 Where the source contradicts itself (e.g. FDM minimum hole 1.5 mm vs 3.0 mm),
 the conservative value governs. This is a screening aid for a supplier
 package; it does not replace the supplier's own DFM feedback.
 
 Usage:
-    python scripts/jlc3dp_dfm_check.py FDM --max-dim 80 --wall 1.8 --hole-dia 3.2
+    python scripts/supplier_dfm_check.py FDM --max-dim 80 --wall 1.8 --hole-dia 3.2
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ RULES_CSV = (
     Path(__file__).resolve().parent.parent
     / "data"
     / "material-datasheets"
-    / "jlc3dp"
-    / "jlc3dp_design_rules_2026-10-08.csv"
+    / "supplier-cn-a"
+    / "cn-a_design_rules_2026-10-08.csv"
 )
 
 

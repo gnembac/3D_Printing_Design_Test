@@ -286,23 +286,24 @@ Do not approve:
 
 without explicit written approval.
 
-## External manufacturing reference data (JLC3DP)
+## External manufacturing reference data (Supplier CN-A)
 
-Published design rules and material data of the China-based service
-JLC3DP (<https://jlc3dp.com/de>) are consolidated as **manufacturer data**:
+Published design rules and material data of an online 3D-printing service
+in China (anonymized as **Supplier CN-A**) are consolidated as
+**manufacturer data, indicative values (Anhaltswerte) only**:
 
 - Analysis, source register, data-quality defects:
-  [`docs/reference/jlc3dp/README.md`](../docs/reference/jlc3dp/README.md)
+  [`docs/reference/supplier-cn-a/README.md`](../docs/reference/supplier-cn-a/README.md)
 - DfAM quick reference per process (FDM, SLA, SLS, MJF, SLM, BJ, WJP):
-  [`docs/reference/jlc3dp/design-guidelines.md`](../docs/reference/jlc3dp/design-guidelines.md)
-- Machine-readable data: `data/material-datasheets/jlc3dp/*.csv`
-- DfM pre-check: `python scripts/jlc3dp_dfm_check.py <PROCESS> --max-dim <mm> ...`
+  [`docs/reference/supplier-cn-a/design-guidelines.md`](../docs/reference/supplier-cn-a/design-guidelines.md)
+- Machine-readable data: `data/material-datasheets/supplier-cn-a/*.csv`
+- DfM pre-check: `python scripts/supplier_dfm_check.py <PROCESS> --max-dim <mm> ...`
 
 Rules when using it:
 
 - Use these files when a part may be outsourced, when choosing between
   FDM/SLA/SLS/MJF/metal, or when an RFQ/manufacturing package is prepared.
-- Label every value taken from them as manufacturer data (JLC3DP, source
+- Label every value taken from them as manufacturer data (Supplier CN-A, source
   date); never present them as own results or as properties of our parts.
 - Respect `quality_flag`: do not use `implausible`, `suspect_copy` or
   `not_traceable` values; state `ASSUMPTION` for `table_shift` values.
@@ -315,6 +316,10 @@ Rules when using it:
   functional parts.
 - A passing DfM pre-check is not supplier approval; DFM feedback from the
   supplier remains mandatory (see "China supplier rules").
+- Indicative values only: confirm by supplier DFM feedback and own
+  measurements before any design or acceptance decision.
+- Keep the supplier anonymized: no company name, URL, list price or
+  quotation in the repository.
 - Website data changes: re-verify before any RFQ and store re-checks as new
   dated files. No upload, quotation request or order without explicit user
   approval.

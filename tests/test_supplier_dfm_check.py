@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from jlc3dp_dfm_check import (  # noqa: E402
+from supplier_dfm_check import (  # noqa: E402
     RULES_CSV,
     PartFeatures,
     check_part,
@@ -73,8 +73,8 @@ def test_check_part_passes_compliant_part() -> None:
 
 
 def test_mechanical_properties_reference_known_materials() -> None:
-    overview = DATA_DIR / "jlc3dp_materials_overview_2026-10-08.csv"
-    mechanical = DATA_DIR / "jlc3dp_mechanical_properties_2026-10-08.csv"
+    overview = DATA_DIR / "cn-a_materials_overview_2026-10-08.csv"
+    mechanical = DATA_DIR / "cn-a_mechanical_properties_2026-10-08.csv"
     with overview.open(newline="", encoding="utf-8") as handle:
         known = {row["material_id"] for row in csv.DictReader(handle)}
     with mechanical.open(newline="", encoding="utf-8") as handle:

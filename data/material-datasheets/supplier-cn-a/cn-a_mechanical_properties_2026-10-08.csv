@@ -158,16 +158,16 @@ SLA-CBY,elongation_at_break,12,20,,%,ASTM D638,,n/a,ok,
 SLA-CBY,impact_strength_izod_notched,58,70,,J/m,ASTM D256,,n/a,ok,
 SLA-CBY,hdt,72,80,,C,ASTM D648,66 psi,n/a,ok,
 SLA-CBY,tg,74,85,,C,DMA E'' peak,,n/a,ok,
-SLA-JLC-BLACK,hardness_shore_d,78,85,,Shore D,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,tensile_modulus,2649,2731,,MPa,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,tensile_strength,41,57,,MPa,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,elongation_at_break,7,11,,%,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,flexural_modulus,2711,2789,,MPa,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,flexural_strength,69,75,,MPa,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,poisson_ratio,0.40,0.44,,-,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,hdt,54,65,,C,ASTM D648,66 psi,n/a,ok,
-SLA-JLC-BLACK,impact_strength_izod_notched,29,34,,J/m,k.A.,,n/a,ok,comparison table
-SLA-JLC-BLACK,dielectric_strength,12.8,16.1,,kV/mm,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,hardness_shore_d,78,85,,Shore D,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,tensile_modulus,2649,2731,,MPa,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,tensile_strength,41,57,,MPa,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,elongation_at_break,7,11,,%,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,flexural_modulus,2711,2789,,MPa,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,flexural_strength,69,75,,MPa,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,poisson_ratio,0.40,0.44,,-,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,hdt,54,65,,C,ASTM D648,66 psi,n/a,ok,
+SLA-BLACK-B,impact_strength_izod_notched,29,34,,J/m,k.A.,,n/a,ok,comparison table
+SLA-BLACK-B,dielectric_strength,12.8,16.1,,kV/mm,k.A.,,n/a,ok,comparison table
 SLA-8228,hdt,56.4,56.4,,C,ASTM D648-18,k.A.,n/a,incomplete,load level not stated
 SLA-8228,flexural_strength,83.1,83.1,,MPa,ASTM D790-17,,n/a,ok,
 SLA-8228,flexural_modulus,2390,2390,,MPa,ASTM D790-17,,n/a,ok,

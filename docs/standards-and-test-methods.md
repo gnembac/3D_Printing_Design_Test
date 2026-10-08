@@ -20,7 +20,7 @@ Do not claim ISO/ASTM compliance for a test that deviates from the standard
 
 ## Standards encountered in external manufacturer data
 
-Supplier datasheets (e.g. JLC3DP, `docs/reference/jlc3dp/`) mix ASTM, ISO
+Supplier datasheets (e.g. Supplier CN-A, `docs/reference/supplier-cn-a/`) mix ASTM, ISO
 and Chinese national standards (GB/T). Values measured under different
 standards or load levels are **not directly comparable**.
 

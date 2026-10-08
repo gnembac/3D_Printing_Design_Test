@@ -23,9 +23,9 @@ defined in [`.claude/CLAUDE.md`](.claude/CLAUDE.md). The original, more
 detailed German specification this project is based on lives in
 [`docs/reference/project-specification-de.md`](docs/reference/project-specification-de.md).
 
-External-manufacturing reference (China service JLC3DP): design rules per
+External-manufacturing reference (anonymized China service "Supplier CN-A", indicative values only): design rules per
 process, material data and a DfM pre-check — see
-[`docs/reference/jlc3dp/`](docs/reference/jlc3dp/README.md).
+[`docs/reference/supplier-cn-a/`](docs/reference/supplier-cn-a/README.md).
 
 ## Repository structure
 
@@ -72,10 +72,10 @@ ruff check .
 pytest -q
 ```
 
-DfM pre-check against JLC3DP published rules (manufacturer data):
+DfM pre-check against Supplier CN-A published rules (manufacturer data):
 
 ```bash
-python scripts/jlc3dp_dfm_check.py FDM --max-dim 80 --wall 2.0 --hole-dia 3.2
+python scripts/supplier_dfm_check.py FDM --max-dim 80 --wall 2.0 --hole-dia 3.2
 ```
 
 ## Status and scope
