@@ -286,6 +286,39 @@ Do not approve:
 
 without explicit written approval.
 
+## External manufacturing reference data (JLC3DP)
+
+Published design rules and material data of the China-based service
+JLC3DP (<https://jlc3dp.com/de>) are consolidated as **manufacturer data**:
+
+- Analysis, source register, data-quality defects:
+  [`docs/reference/jlc3dp/README.md`](../docs/reference/jlc3dp/README.md)
+- DfAM quick reference per process (FDM, SLA, SLS, MJF, SLM, BJ, WJP):
+  [`docs/reference/jlc3dp/design-guidelines.md`](../docs/reference/jlc3dp/design-guidelines.md)
+- Machine-readable data: `data/material-datasheets/jlc3dp/*.csv`
+- DfM pre-check: `python scripts/jlc3dp_dfm_check.py <PROCESS> --max-dim <mm> ...`
+
+Rules when using it:
+
+- Use these files when a part may be outsourced, when choosing between
+  FDM/SLA/SLS/MJF/metal, or when an RFQ/manufacturing package is prepared.
+- Label every value taken from them as manufacturer data (JLC3DP, source
+  date); never present them as own results or as properties of our parts.
+- Respect `quality_flag`: do not use `implausible`, `suspect_copy` or
+  `not_traceable` values; state `ASSUMPTION` for `table_shift` values.
+- Compare HDT only at the same load level; compare impact values only for
+  the same method (Izod/Charpy, notched/unnotched, unit).
+- FDM service values without orientation are not design values for
+  Z-loaded parts.
+- Where rules conflict, the conservative value governs.
+- "X Resin" (random material) is excluded from experiments and
+  functional parts.
+- A passing DfM pre-check is not supplier approval; DFM feedback from the
+  supplier remains mandatory (see "China supplier rules").
+- Website data changes: re-verify before any RFQ and store re-checks as new
+  dated files. No upload, quotation request or order without explicit user
+  approval.
+
 ## GitHub repository conventions
 
 This repository is intended to go public. Apply these rules before anything

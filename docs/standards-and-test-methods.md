@@ -17,3 +17,17 @@ Do not claim ISO/ASTM compliance for a test that deviates from the standard
 | Water absorption | ISO 62 | |
 | Additive manufacturing — terminology | ISO/ASTM 52900 | |
 | Additive manufacturing — design | ISO/ASTM 52910 | |
+
+## Standards encountered in external manufacturer data
+
+Supplier datasheets (e.g. JLC3DP, `docs/reference/jlc3dp/`) mix ASTM, ISO
+and Chinese national standards (GB/T). Values measured under different
+standards or load levels are **not directly comparable**.
+
+| Property | GB/T standard seen | Closest ISO / ASTM | Note |
+|---|---|---|---|
+| Tensile | GB/T 1040(.2) | ISO 527-2 / ASTM D638 | |
+| Flexural | GB/T 9341 | ISO 178 / ASTM D790 | |
+| Charpy impact | GB/T 1043(.1) | ISO 179-1 | not equal to Izod (ISO 180 / ASTM D256) |
+| HDT | GB/T 1634.2 | ISO 75-2 / ASTM D648 | always state load: 0.45 vs 1.8 MPa |
+| Shore hardness | GB/T 2411 | ISO 868 / ASTM D2240 | |
