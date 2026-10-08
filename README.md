@@ -23,6 +23,10 @@ defined in [`.claude/CLAUDE.md`](.claude/CLAUDE.md). The original, more
 detailed German specification this project is based on lives in
 [`docs/reference/project-specification-de.md`](docs/reference/project-specification-de.md).
 
+External-manufacturing reference (anonymized China service "Supplier CN-A", indicative values only): design rules per
+process, material data and a DfM pre-check — see
+[`docs/reference/supplier-cn-a/`](docs/reference/supplier-cn-a/README.md).
+
 ## Repository structure
 
 ```text
@@ -66,6 +70,12 @@ Before completing a code change:
 ruff format .
 ruff check .
 pytest -q
+```
+
+DfM pre-check against Supplier CN-A published rules (manufacturer data):
+
+```bash
+python scripts/supplier_dfm_check.py FDM --max-dim 80 --wall 2.0 --hole-dia 3.2
 ```
 
 ## Status and scope

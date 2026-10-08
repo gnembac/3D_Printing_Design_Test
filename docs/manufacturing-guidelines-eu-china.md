@@ -24,5 +24,14 @@ für chinesische 3D-Druck-Fertiger") and §13.13 (EU compliance).
 - No material/color/filler/process/orientation/site/subcontractor/packaging
   substitution without written approval (see `CLAUDE.md` "China supplier rules").
 
+## Reference service: Supplier CN-A
+
+Published DfM rules and material data of Supplier CN-A are consolidated in
+`docs/reference/supplier-cn-a/` (design guidelines per process, source register,
+data-quality defects) and `data/material-datasheets/supplier-cn-a/`. Run
+`python scripts/supplier_dfm_check.py` as a pre-check before preparing a
+package. A pre-check does not replace the supplier's DFM response; general
+tolerances (±0.2–0.4 mm) are not suitable for functional fits — mark CTQs.
+
 No external ordering, supplier communication, quotation acceptance, or
 payment without explicit user approval.
