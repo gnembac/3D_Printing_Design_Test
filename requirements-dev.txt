@@ -4,3 +4,5 @@ pytest==9.1.1
 trimesh==4.5.3
 networkx==3.4.2  # required by trimesh 3MF loader (validate_cad_exports.py)
 lxml==6.1.3  # required by trimesh 3MF loader (validate_cad_exports.py)
+qrcode==8.2  # QR generation for the NCRAI card (cad/functional-prototypes/ncrai-robot-card)
+pillow==12.3.0  # image rendering for qr_logo.py
