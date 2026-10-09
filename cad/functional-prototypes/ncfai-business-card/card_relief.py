@@ -1,4 +1,4 @@
-"""Vector relief design of the card front: raised name and a raised bar with ENGRAVED lettering.
+"""Vector relief design of the card front (raised name) and icon shapes (robot head, chip).
 
 Everything is built as shapely geometry in CARD coordinates (mm, origin top-left, y down).
 Two height levels only: base plane (z = base_thickness) and raised plane (+relief).
@@ -129,23 +129,6 @@ def text_geometry(
     return unary_union(out)
 
 
-def tagline_bar(text: str, x0: float, y0: float, w: float, h: float) -> tuple[BaseGeometry, float]:
-    """Raised rounded bar with `text` ENGRAVED into it (down to the base plane).
-
-    The letter size is chosen as large as fits (max 5.8 mm); below 5.4 mm the bold strokes
-    get thinner than the 0.8 mm minimum groove width -> ValueError.
-    Returns (geometry, font size in mm).
-    """
-    pad, track = 3.5, 0.45
-    size = min(5.8, (w - 2 * pad - track * (len(text) - 1)) / text_width(text, 1.0))
-    if size < 5.4:
-        raise ValueError(f"tagline '{text}' too long for the bar (letter size {size:.1f} < 5.4 mm)")
-    body = box(x0 + 2.0, y0 + 2.0, x0 + w - 2.0, y0 + h - 2.0).buffer(2.0, quad_segs=16)
-    baseline = y0 + h / 2 + cap_height(size) / 2
-    letters = text_geometry(text, size, x0 + w / 2, baseline, anchor="c", tracking=track)
-    return body.difference(letters), size
-
-
 def robot_head(cx: float, top: float) -> BaseGeometry:
     """Robotics icon: head with antenna, ears and engraved eyes/mouth (all features >= 0.85 mm)."""
     head = box(cx - 3.0, top + 2.1, cx + 3.0, top + 7.9)
@@ -191,20 +174,17 @@ def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
     return g.buffer(r, quad_segs=8).buffer(-r, quad_segs=8)
 
 
-BAR_X, BAR_Y, BAR_W, BAR_H = 5.0, 23.4, 75.0, 8.6
 NAME_SIZE = 8.4
 
 
 @dataclass(frozen=True)
 class FrontRelief:
     name: BaseGeometry  # raised
-    bar: BaseGeometry  # raised bar, tagline engraved
-    bar_font_mm: float
-    raised: BaseGeometry  # union, after minimum-feature enforcement
+    raised: BaseGeometry  # after minimum-feature enforcement
     removed_area: float  # mm2 changed by enforce_min_feature (should be small)
 
 
-def build_front_relief(name: str, tagline: str, min_feature: float) -> FrontRelief:
+def build_front_relief(name: str, min_feature: float) -> FrontRelief:
     first, _, last = name.partition(" ")
     name_geom = unary_union(
         [
@@ -212,7 +192,5 @@ def build_front_relief(name: str, tagline: str, min_feature: float) -> FrontReli
             text_geometry(last, NAME_SIZE, 41.0, 20.6),
         ]
     )
-    bar, size = tagline_bar(tagline, BAR_X, BAR_Y, BAR_W, BAR_H)
-    raw = unary_union([name_geom, bar])
-    raised = enforce_min_feature(raw, min_feature)
-    return FrontRelief(name_geom, bar, size, raised, raw.symmetric_difference(raised).area)
+    raised = enforce_min_feature(name_geom, min_feature)
+    return FrontRelief(name_geom, raised, name_geom.symmetric_difference(raised).area)

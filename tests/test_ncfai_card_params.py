@@ -68,29 +68,27 @@ def test_qr_layout_geometry() -> None:
     assert abs((q.x - x0) - QUIET_MODULES * q.module_mm) < 1e-9 and x1 > q.x + q.size
 
 
-def test_relief_mesh_is_single_watertight_shell_with_engraved_bar() -> None:
+def test_relief_mesh_is_single_watertight_shell() -> None:
     for mod in ("shapely", "trimesh", "fontTools", "mapbox_earcut", "PIL"):
         pytest.importorskip(mod)
-    from card_relief import build_front_relief, parts
+    from card_relief import build_front_relief
     from ncfai_card import build_mesh
 
     p = CardParams()
-    rel = build_front_relief("Ada Lee", "AI \u00b7 ROBOTICS \u00b7 BEER", p.min_feature)
-    assert rel.raised.area > 200 and rel.bar_font_mm >= 5.4
+    rel = build_front_relief("Ada Lee", p.min_feature)
+    assert rel.raised.area > 50
     geo = build_mesh(p, [], rel.raised).geometry()
     assert geo.is_watertight and len(geo.split()) == 1
     assert abs(geo.bounds[1][2] - p.total_thickness) < 1e-9
-    # engraved letters = holes in the raised bar polygon
-    assert any(len(q.interiors) > 0 for q in parts(rel.bar))
     # flat control variant: plain 2.0 mm plate
     flat = build_mesh(replace(p, relief=0.0), [], None).geometry()
     assert flat.is_watertight and abs(flat.bounds[1][2] - 2.0) < 1e-9
 
 
-def test_overlong_tagline_is_rejected() -> None:
+def test_icons_respect_min_feature() -> None:
     pytest.importorskip("shapely")
-    pytest.importorskip("fontTools")
-    from card_relief import build_front_relief
+    from card_relief import chip_icon, enforce_min_feature, robot_head
 
-    with pytest.raises(ValueError):
-        build_front_relief("A B", "AI \u00b7 ROBOTICS \u00b7 SENSORY \u00b7 BEER", 0.8)
+    for g in (robot_head(0, 0), chip_icon(0, 0)):
+        kept = enforce_min_feature(g, 0.8)
+        assert kept.symmetric_difference(g).area / g.area < 0.08

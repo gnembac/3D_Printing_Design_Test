@@ -58,6 +58,14 @@ FONT_BOLD = (
 )
 PRINT_MARGIN = 1.5  # keep ink away from the card edge (colour/geometry registration `ASSUMPTION`)
 RING_GAP, RING_W = 0.6, 0.9  # colour ring around each hole, mm
+# Brand colours sampled from the institutions' own logos (`estimated`, sRGB)
+DOEMENS_GREEN, DOEMENS_BLUE = (165, 204, 84), (0, 68, 137)
+BJCP_BLUE, BJCP_AMBER = (26, 69, 97), (231, 163, 61)
+BRAND = {  # institution -> (word colour, title colour, underline accent)
+    "DOEMENS": (DOEMENS_GREEN, DOEMENS_BLUE, DOEMENS_GREEN),
+    "BJCP": (BJCP_BLUE, BJCP_BLUE, BJCP_AMBER),
+}
+CRED_SIZE = 4.2  # mm, credential lines (flat colour)
 QR_DARK = (0, 0, 0)  # K black: max. contrast (supplier colour mapping `k.A.`)
 QR_LOGO_GAP = 0.0  # logo may use the left half up to the QR quiet zone
 QR_RIGHT, QR_TOP = 7.0, 7.0  # module area: distance from right edge / top, mm
@@ -73,7 +81,7 @@ class CardContent:
     qualification: str
     address: tuple[str, ...]
     url: str = ""
-    tagline: str = ""  # engraved into the raised bar (upper case, max. ~20 characters)
+    credentials: tuple[tuple[str, str], ...] = ()  # (institution, title), e.g. (DOEMENS, ...)
 
     @staticmethod
     def load(path: Path) -> CardContent:
@@ -84,7 +92,7 @@ class CardContent:
             d["qualification"],
             tuple(d["address"]),
             d.get("url", ""),
-            d.get("tagline", ""),
+            tuple((i, ti) for i, ti in d.get("credentials", [])),
         )
 
 
@@ -186,17 +194,20 @@ def _paint_gradient(
     img.paste(Image.fromarray(grad.astype("uint8")), mask=mask)
 
 
-def _draw_qualification(
-    d: ImageDraw.ImageDraw, text: str, x: float, y: float, size: float, ppmm: float
+def _draw_credential(
+    d: ImageDraw.ImageDraw, inst: str, title: str, x: float, baseline: float, ppmm: float
 ) -> None:
-    """One line; UPPER-CASE words (institutions) in blue, the rest navy."""
-    f = font(size, ppmm)
-    space = d.textlength(" ", font=f)
-    cx = x * ppmm
-    for word in text.split(" "):
-        inst = len(word) >= 4 and word.isalpha() and word.isupper()
-        d.text((cx, y * ppmm), word, font=f, fill=BLUE if inst else NAVY)
-        cx += d.textlength(word, font=f) + space
+    """`INSTITUTION Title` in the institution's brand colours + thin accent underline."""
+    word_c, title_c, accent = BRAND.get(inst.upper(), (NAVY, NAVY, NAVY))
+    f = font(CRED_SIZE, ppmm)
+    d.text((x * ppmm, baseline * ppmm), inst, font=f, fill=word_c, anchor="ls")
+    x_title = x * ppmm + d.textlength(inst + " ", font=f)
+    d.text((x_title, baseline * ppmm), title, font=f, fill=title_c, anchor="ls")
+    x_end = x_title + d.textlength(title, font=f)
+    d.rectangle(
+        [_px(x, ppmm), _px(baseline + 0.8, ppmm), round(x_end), _px(baseline + 1.3, ppmm) - 1],
+        fill=accent,
+    )
 
 
 def render_front(
@@ -216,15 +227,21 @@ def render_front(
         logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS),
         (_px(5.0, ppmm), _px(5.0, ppmm)),
     )
-    # raised name (navy) and raised bar with engraved tagline (letters = white base plane)
+    # raised name (navy)
     _paint(d, relief.name, NAVY, ppmm)
-    _paint_gradient(img, relief.bar, [ORANGE, PURPLE, BLUE], ppmm)
+    # gradient rule (flat colour, base level)
+    y0, y1 = _px(23.2, ppmm), _px(23.2 + 0.6, ppmm)
+    for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
+        d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
     # flat (printed, no relief) text: strokes too thin for 0.8 mm relief
-    d.text((_px(5.0, ppmm), _px(34.0, ppmm)), c.company, font=font(3.3, ppmm), fill=NAVY)
-    _draw_qualification(d, c.qualification, 5.0, 38.0, 3.3, ppmm)
-    f3 = font(2.8, ppmm)
+    d.text(
+        (_px(5.0, ppmm), _px(27.9, ppmm)), c.company, font=font(3.3, ppmm), fill=NAVY, anchor="ls"
+    )
+    for i, (inst, title) in enumerate(c.credentials):
+        _draw_credential(d, inst, title, 5.0, 33.4 + 5.8 * i, ppmm)
+    f3 = font(2.7, ppmm)
     for i, line in enumerate(c.address):
-        d.text((_px(5.0, ppmm), _px(43.2 + 3.3 * i, ppmm)), line, font=f3, fill=NAVY)
+        d.text((_px(5.0, ppmm), _px(45.0 + 3.2 * i, ppmm)), line, font=f3, fill=NAVY, anchor="ls")
     _draw_rings(d, bubbles, p, ppmm, mirror=False)
     return img
 
@@ -620,7 +637,7 @@ def main() -> int:
     bubbles = layout_bubbles(p)
     content = CardContent.load(a.content)
     logo = trim_logo(Image.open(a.logo))
-    rel = build_front_relief(content.name, content.tagline, p.min_feature)
+    rel = build_front_relief(content.name, p.min_feature)
 
     a.out.mkdir(parents=True, exist_ok=True)
     part = a.part_number + ("-flat" if p.relief == 0 else "") + ("-holes" if bubbles else "")
@@ -661,10 +678,7 @@ def main() -> int:
         rows += [(f"QR decodes: {n}", "ok" if ok else "no", ok) for n, ok in vq]
         if not vq:
             print("QR decode test: skipped (zxing-cpp not installed)")
-    print(
-        f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)} "
-        f"bar font {rel.bar_font_mm:.2f} mm"
-    )
+    print(f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)}")
     for name, res, ok in rows:
         info = "informational" in name
         print(f"[{'PASS' if ok else ('INFO' if info else 'FAIL')}] {name}: {res}")

@@ -8,5 +8,14 @@
     "Germany / Bavaria / Frankonia"
   ],
   "url": "https://example.com/",
-  "tagline": "EXAMPLE · WORDS"
+  "credentials": [
+    [
+      "DOEMENS",
+      "Example Title"
+    ],
+    [
+      "BJCP",
+      "Example Judge"
+    ]
+  ]
 }
