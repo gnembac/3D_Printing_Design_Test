@@ -1,6 +1,6 @@
 # NCFAI-Visitenkarte – 3D-gedrucktes Unikat (EXP)
 
-**Stand:** 2026-10-09 (Rev. 3: Relief, Hopfendolde, Logo-Rückseite, QR-Code) · **Revision:** EXP (nicht freigegeben)
+**Stand:** 2026-10-09 (Rev. 4: Rückseite nur Logo + QR, Badges/Icons, Tagline) · **Revision:** EXP (nicht freigegeben)
 **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A (Herstellerdaten, Anhaltswerte)
 
 ## 1 Anforderungen → Umsetzung
@@ -11,10 +11,11 @@
 | Dicke max. 2,5 mm | **Grundplatte 2,0 mm** (= Wandminimum PAC-HP) **+ 0,5 mm Relief = 2,5 mm** nominal; `card_params.py` erzwingt es |
 | Schrift **erhaben und vertieft** | *Erhaben:* Name „Gunter / Nembach“ (Strich ≈ 1,1 mm). *Vertieft:* „DOEMENS“ und „BJCP“ als erhabene Kapseln mit **eingravierten** Buchstaben (Gravur reicht bis auf die Grundplatte, nie darunter → Wand bleibt 2,0 mm) |
 | Hopfendolde (grün, weiblich) statt Rundformen | Dolde als Relief: Hochbrakteen als erhabene Schuppen, **Rillen 0,85 mm** dazwischen (Gravurwirkung), Stiel; Rillengrund dunkelgrün, Schuppen hellgrün→grün. Form pro Seed leicht anders (Unikat) |
-| Rückseite: Logo | NCFAI-Logo (transparent, auf Weiß gerendert) links oben, darunter `UNIKAT No. <Hash>` |
+| Rückseite: Logo | NCFAI-Logo (transparent, auf Weiß) **mittig in der linken Hälfte**; kein weiterer Text, keine Bläschen (wenig Tinte, QR-Kontrast). Die Seed-Kennung steht nur noch im Dateinamen/OBJ-Kommentar |
 | QR-Code auf Landing Page | rechts, 29 × 29 Module à 1,2 mm = 34,8 mm, ECC Q, Ruhezone 4 Module, Schwarz auf Weiß, URL im Klartext darunter |
+| Karte auf den Zweck (KI, Robotik, Sommelier, Bier) optimiert | Vorderseite: Tagline „AI · Robotics · Sensory · Beer“; Relief-Icons **Roboterkopf** (Robotik) und **Mikrochip** (KI) oben rechts; **Hopfendolde** (Bier); Badges **DOEMENS** (Kapsel) und **BJCP** (Siegel mit Fasen) mit Logo-Farbverlauf, graviertem Wort (Laufweite +0,35 mm) und Beschriftung „Biersommelier“ / „Beer Judge“; Name hierarchisch groß |
 | Feine Details für 3D-Druck-Kompetenz | Detailregeln siehe 2; Relief, Gravur, Rillen, Hopfenschuppen = sichtbarer Nachweis |
-| Unikat | Seed → Hopfenschuppen (Lage, Größe, Neigung, Biegung, Stiel), Bläschenmuster Rückseite, Kennung. Gleicher Seed = gleiche Karte |
+| Unikat | Seed → Hopfenschuppen (Lage, Größe, Neigung, Biegung, Stiel). Gleicher Seed = gleiche Karte (Seed-Tag im Dateinamen). Optional durchgehende Löcher (`--bubbles N`) |
 | Wenig Verzug | siehe 3 |
 
 ## 2 Feinheits-Regeln im Modell (Herstellerdaten Supplier CN-A, konservativ)
@@ -56,7 +57,7 @@
 
 ## 5 Reproduktion
 
-Personendaten (Adresse, Badges, URL) liegen **nicht im Git**: `private/` ist ignoriert; `card_content.example.json` zeigt das Format (Felder `name`, `company`, `qualification`, `address`, `url`, `badges`).
+Personendaten (Adresse, Badges, Tagline, URL) liegen **nicht im Git**: `private/` ist ignoriert; `card_content.example.json` zeigt das Format (Felder `name`, `company`, `qualification`, `address`, `url`, `badges`, `tagline`).
 
 ```bash
 pip install numpy pillow shapely mapbox-earcut trimesh networkx lxml segno zxing-cpp fonttools   # optional: cadquery (STEP)

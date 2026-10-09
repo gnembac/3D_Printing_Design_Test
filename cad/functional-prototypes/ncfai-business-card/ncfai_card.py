@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import random
 import sys
 import zipfile
 from dataclasses import dataclass, replace
@@ -66,6 +65,7 @@ FONT_BOLD = (
 PRINT_MARGIN = 1.5  # keep ink away from the card edge (colour/geometry registration `ASSUMPTION`)
 RING_GAP, RING_W = 0.6, 0.9  # colour ring around each hole, mm
 QR_DARK = (0, 0, 0)  # K black: max. contrast (supplier colour mapping `k.A.`)
+QR_LOGO_GAP = 0.0  # logo may use the left half up to the QR quiet zone
 QR_RIGHT, QR_TOP = 7.0, 7.0  # module area: distance from right edge / top, mm
 GREEN_FLOOR = (38, 94, 30)  # hop cone groove floor (`estimated`)
 GREEN_TOP, GREEN_BOT = (160, 207, 66), (56, 140, 46)  # bract colours top -> tip (`estimated`)
@@ -80,6 +80,7 @@ class CardContent:
     address: tuple[str, ...]
     url: str = ""
     badges: tuple[tuple[str, str], ...] = ()  # (engraved word, caption below)
+    tagline: str = ""
 
     @staticmethod
     def load(path: Path) -> CardContent:
@@ -91,6 +92,7 @@ class CardContent:
             tuple(d["address"]),
             d.get("url", ""),
             tuple((w, cap) for w, cap in d.get("badges", [])),
+            d.get("tagline", ""),
         )
 
 
@@ -165,6 +167,33 @@ def _paint(
             draw.polygon([(x * ppmm, y * ppmm) for x, y in ring.coords], fill=hole)
 
 
+def _paint_gradient(
+    img: Image.Image,
+    geom: BaseGeometry,
+    stops: tuple[tuple[int, int, int], tuple[int, int, int]],
+    ppmm: float,
+    vertical: bool = False,
+) -> None:
+    """Fill geometry with a two-colour gradient across its bounding box (holes stay untouched)."""
+    mask = Image.new("L", img.size, 0)
+    md = ImageDraw.Draw(mask)
+    for poly in sorted(parts(geom), key=lambda q: -q.area):
+        md.polygon([(x * ppmm, y * ppmm) for x, y in poly.exterior.coords], fill=255)
+        for ring in poly.interiors:
+            md.polygon([(x * ppmm, y * ppmm) for x, y in ring.coords], fill=0)
+    x0, y0, x1, y1 = geom.bounds
+    w, h = img.size
+    ramp = np.linspace(0, 1, w)[None, :].repeat(h, 0)
+    if vertical:
+        ramp = np.linspace(0, 1, h)[:, None].repeat(w, 1)
+        t = np.clip((ramp * h / ppmm - y0) / max(y1 - y0, 1e-9), 0, 1)
+    else:
+        t = np.clip((ramp * w / ppmm - x0) / max(x1 - x0, 1e-9), 0, 1)
+    a, b = np.array(stops[0], float), np.array(stops[1], float)
+    grad = Image.fromarray((a + (b - a) * t[..., None]).astype("uint8"))
+    img.paste(grad, mask=mask)
+
+
 def render_front(
     p: CardParams,
     c: CardContent,
@@ -181,30 +210,35 @@ def render_front(
     big = logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS)
     img.paste(big, (_px(5.0, ppmm), _px(5.0, ppmm)))
     # gradient rule (flat colour, base level)
-    y0, y1 = _px(23.9, ppmm), _px(23.9 + 0.6, ppmm)
+    y0, y1 = _px(22.9, ppmm), _px(22.9 + 0.6, ppmm)
     for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
         d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
     # flat (printed, no relief) small text: strokes too thin for 0.8 mm relief
-    f2 = font(2.9, ppmm)
-    d.text((_px(5.0, ppmm), _px(26.2, ppmm)), c.company, font=f2, fill=NAVY)
+    d.text((_px(5.0, ppmm), _px(24.5, ppmm)), c.company, font=font(2.9, ppmm), fill=NAVY)
+    if c.tagline:
+        d.text((_px(5.0, ppmm), _px(27.9, ppmm)), c.tagline, font=font(2.6, ppmm), fill=PURPLE)
     f3 = font(2.6, ppmm)
     if c.badges:
         for (_, cap), (x0, _) in zip(
             c.badges, badge_layout(tuple(w for w, _ in c.badges)), strict=True
         ):
-            d.text((_px(x0 + 1.0, ppmm), _px(38.6, ppmm)), cap, font=f3, fill=NAVY)
+            d.text((_px(x0 + 1.0, ppmm), _px(39.7, ppmm)), cap, font=f3, fill=NAVY)
     else:
-        d.text((_px(5.0, ppmm), _px(31.2, ppmm)), c.qualification, font=f2, fill=NAVY)
+        d.text((_px(5.0, ppmm), _px(31.2, ppmm)), c.qualification, font=f3, fill=NAVY)
     for i, line in enumerate(c.address):
-        d.text((_px(5.0, ppmm), _px(42.4 + 3.4 * i, ppmm)), line, font=f3, fill=NAVY)
+        d.text((_px(5.0, ppmm), _px(43.4 + 3.2 * i, ppmm)), line, font=f3, fill=NAVY)
     # hop cone: groove floor (base level) dark green, bracts (raised) lighter green
     _paint(d, relief.cone.silhouette, GREEN_FLOOR, ppmm)
     for tile, t in relief.cone.tiles:
         _paint(d, tile, lerp(GREEN_TOP, GREEN_BOT, t), ppmm)
     _paint(d, relief.cone.stalk, lerp(GREEN_TOP, GREEN_BOT, 0.3), ppmm)
-    # raised name + badges (engraved letters = white base plane showing through)
+    # raised name, badges (logo gradients; engraved letters = white base plane), icons
     _paint(d, relief.name, NAVY, ppmm)
-    _paint(d, relief.badges, NAVY, ppmm)
+    stops = ((ORANGE, PURPLE), (PURPLE, BLUE))
+    for i, g in enumerate(relief.badge_list):
+        _paint_gradient(img, g, stops[i % 2], ppmm)
+    _paint_gradient(img, relief.robot, (BLUE, PURPLE), ppmm, vertical=True)
+    _paint_gradient(img, relief.chip, (ORANGE, PURPLE), ppmm, vertical=True)
     _draw_rings(d, bubbles, p, ppmm, mirror=False)
     return img
 
@@ -214,65 +248,21 @@ def render_back(
 ) -> Image.Image:
     """Back face as seen from behind (not mirrored: this is the picture the viewer sees).
 
-    Left column: unique ID + foam bubbles around the hole rings; right: large QR code (c.url).
+    Left half: NCFAI logo centred. Right half: large QR code (c.url) + URL in plain text.
+    No text/ink elsewhere (ink coverage low, maximum QR contrast).
     """
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
     d = ImageDraw.Draw(img)
-    rng = random.Random(seed_int(p.seed) + 1)
-    holes = [(p.width - b.x, b.y, b.d / 2 + RING_GAP + RING_W) for b in bubbles]
-    keep: list[tuple[float, float, float, float]] = [(4.0, 4.0, 38.5, 34.0)]  # logo + ID text
-    qr = None
-    if c.url:
-        qr = make_layout(c.url, p.width - QR_RIGHT, QR_TOP, ppmm)
-        qx0, qy0, qx1, qy1 = qr.keep_out
-        keep += [(qx0, qy0, qx1, qy1), (qx0, qy1, qx1, qy1 + 8.0)]  # quiet zone + caption
-        for hx, hy, hr in holes:  # rings are ink: they must not touch the quiet zone
-            if hx + hr > qx0 - 0.5 and hy + hr > qy0 and hy - hr < qy1 + 8.0:
-                raise ValueError("hole ring intrudes into the QR quiet zone; change seed/layout")
-    placed: list[tuple[float, float, float]] = []
-    for _ in range(1500):
-        r = rng.choice((0.9, 1.2, 1.6, 2.2, 3.0, 4.2)) * rng.uniform(0.85, 1.15)
-        x = rng.uniform(PRINT_MARGIN + r, p.width - PRINT_MARGIN - r)
-        y = rng.uniform(PRINT_MARGIN + r, p.height - PRINT_MARGIN - r)
-        if any(math.hypot(x - hx, y - hy) < hr + r + 0.8 for hx, hy, hr in holes):
-            continue
-        if any(
-            k[0] - r - 0.5 < x < k[2] + r + 0.5 and k[1] - r - 0.5 < y < k[3] + r + 0.5
-            for k in keep
-        ):
-            continue
-        if any(math.hypot(x - ox, y - oy) < (or_ + r) * 0.8 for ox, oy, or_ in placed):
-            continue
-        # keep the bubble inside the rounded outline
-        if not _inside_outline(p, x, y, r + PRINT_MARGIN, mirror=True):
-            continue
-        placed.append((x, y, r))
-    for x, y, r in placed:
-        col = gradient(x / p.width + rng.uniform(-0.08, 0.08))
-        d.ellipse(
-            [_px(x - r, ppmm), _px(y - r, ppmm), _px(x + r, ppmm), _px(y + r, ppmm)], fill=col
-        )
-        if r >= 1.5:  # highlight -> reads as bubble
-            hr = r * 0.32
-            hx, hy = x - r * 0.35, y - r * 0.35
-            d.ellipse(
-                [_px(hx - hr, ppmm), _px(hy - hr, ppmm), _px(hx + hr, ppmm), _px(hy + hr, ppmm)],
-                fill=lerp(col, (255, 255, 255), 0.65),
-            )
-    _draw_rings(d, bubbles, p, ppmm, mirror=True)
-    # logo (replaces the former text block) + unique ID
-    lw = 33.0
+    qr = make_layout(c.url, p.width - QR_RIGHT, QR_TOP, ppmm) if c.url else None
+    left_half_w = qr.keep_out[0] + QR_LOGO_GAP if qr else p.width / 2
+    lw = min(32.0, left_half_w - 2 * 4.5)
     lh = lw * logo.height / logo.width
+    cx = p.width / 4  # centre of the left half
     img.paste(
-        logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS), (_px(5.0, ppmm), _px(5.0, ppmm))
+        logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS),
+        (_px(cx - lw / 2, ppmm), _px(p.height / 2 - lh / 2, ppmm)),
     )
-    d.text((_px(5.0, ppmm), _px(5.0 + lh + 2.6, ppmm)), "UNIKAT", font=font(3.6, ppmm), fill=NAVY)
-    d.text(
-        (_px(5.0, ppmm), _px(5.0 + lh + 7.0, ppmm)),
-        f"No. {seed_tag(p.seed)}",
-        font=font(2.8, ppmm),
-        fill=NAVY,
-    )
+    _draw_rings(d, bubbles, p, ppmm, mirror=True)
     if qr is not None:
         m = qr.module_mm
         for r_i, row in enumerate(qr.matrix):
@@ -285,8 +275,12 @@ def render_back(
         cap = c.url.removeprefix("https://").removeprefix("http://").rstrip("/")
         fc = font(2.8, ppmm)
         w = d.textlength(cap, font=fc)
-        cx = qr.x + qr.size / 2
-        d.text((_px(cx, ppmm) - w / 2, _px(qr.keep_out[3] + 0.4, ppmm)), cap, font=fc, fill=NAVY)
+        d.text(
+            (_px(qr.x + qr.size / 2, ppmm) - w / 2, _px(qr.keep_out[3] + 0.4, ppmm)),
+            cap,
+            font=fc,
+            fill=NAVY,
+        )
     return img
 
 
