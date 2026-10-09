@@ -112,7 +112,7 @@ Ein größeres Logo verbraucht die Fehlerreserve. Lesbarkeit der Logobuchstaben 
 | Format | 3MF, Materials Extension (`texture2d`, `texture2dgroup`, `requiredextensions="m"`), Filter `nearest` |
 | Textur | ein Atlas 1720 × 3020 px (20 px/mm): Plattenoberseite (QR), Plattenrückseite (Wortlogo, gespiegelt vorgezeichnet), Paneelvorderseite (Roboter mit Verlauf, Visier, Brust mit Dome-Symbol), Vollfarbflächen für Kanten und Paneelrückseite |
 | Dateigröße | 0,3 MB, 476 Dreiecke |
-| Verifikation | Rendering direkt aus den 3MF-Daten (UV-Zuordnung geprüft, QR lesbar) |
+| Verifikation | Strenger Lesetest mit lib3mf (0 Warnungen, 1 Textur, 1 Texturgruppe, 476 Dreiecke); Rendering direkt aus den 3MF-Daten (UV-Zuordnung geprüft, QR lesbar). Ein erster Entwurf scheiterte hier an einem falschen Beziehungstyp für die Textur (`…/3dtexture` ist richtig) und wurde behoben |
 | Risiko | Lieferant liest die Extension nicht → Datei wird abgelehnt oder grau gedruckt. Daher `requiredextensions` gesetzt, damit es nicht still passiert |
 
 Farbraum und Wiedergabe des Verlaufs im Vollfarb-MJF-Druck sind **k.A.** und werden am Erstmuster beurteilt.
@@ -148,6 +148,7 @@ Farbraum und Wiedergabe des Verlaufs im Vollfarb-MJF-Druck sind **k.A.** und wer
 | `assets/` | Logo (transparent), QR (SVG in mm, PNG, CSV), Vorschauen |
 | `exports/step/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.step` | Geometrie (ohne Farbe), abgeleitet |
 | `exports/3mf/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf` | Geometrie + Farbe, abgeleitet |
+| `exports/upload-jlc3dp/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf` | identische Kopie für den Upload (Erstmuster) |
 
 ```bash
 python cad/functional-prototypes/ncrai-robot-card/robot_card.py --out <dir> --date 2026-10-09
@@ -165,3 +166,37 @@ python scripts/validate_cad_exports.py && python scripts/generate_manifest.py
 | ISO/IEC 18004 (QR-Code, Fehlerkorrektur, Ruhezone) | Aufbau, Stufe H | nicht im Volltext eingesehen |
 | 3MF Consortium, Materials and Properties Extension | Texturen in 3MF | nicht im Volltext eingesehen, Umsetzung nach Standardbeschreibung |
 | Eigene Messungen | Beispieldatei-Analyse, QR-Decodertests, Geometrieprüfung | 2026-10-09 |
+
+## 12 Erstmuster-Bestellung (Checkliste, nichts bestellt oder hochgeladen)
+
+Grundlage: Hilfeseiten des Druckdienstes JLC3DP (Herstellerdaten, indikativ; Seite „PAC-HP Full Color“ Stand 2023-12-28, Seite „Full-color Printing Orders“ Stand 2026-07-24; vor der Bestellung neu prüfen).
+
+| Punkt | Vorgabe / Stand |
+|---|---|
+| Datei | `exports/upload-jlc3dp/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf` (0,3 MB, 1 Schale, 1 Objekt, mm) |
+| Dienstvorgabe PAC-HP | nur 3MF, **mit allen Farbdaten**, sonst Fertigung in Grau; eine Schale je Datei (frühere Ablehnung mehrerer Schalen beim Badge) |
+| Bestelloptionen | Verfahren MJF, Material PAC-HP Nylon (Full Color), Menge 1, Standard-Oberfläche |
+| Maße | 86 × 54 × 37,9 mm gedruckte Pose, Bauraum 320 × 175 × 225 mm, Toleranz ±0,3 mm (bis 100 mm) |
+| Preis / Lieferzeit | ab 17 USD, Bauzeit 72 h laut Angabe des Nutzers; tatsächliches Angebot **k.A.** |
+| Farbe im 3MF | Textur-3MF (Materials Extension). **Ob der Dienst die Textur liest, ist k.A.** |
+| Wandregel | Filmscharnier 0,8 mm liegt unter der Wandvorgabe 2,0 mm; Datei kann bei der Prüfung beanstandet werden |
+
+Ablauf (nur mit deiner Freigabe, ich lade nichts hoch):
+
+1. Auf der Angebotsseite Datei hochladen und prüfen, ob die Vorschau **farbig** erscheint (Verlauf, QR-Code, Logo). Bei grauer Vorschau nicht bestellen.
+2. Material PAC-HP Nylon und Vollfarbe wählen, Menge 1.
+3. Rückfrage an den Support stellen (Entwurf, nicht gesendet):
+
+> We want to order one first sample in PAC-HP Nylon (MJF, full colour). The 3MF uses a PNG texture (3MF Materials Extension, texture2d/texture2dgroup). Is this colour format accepted, or do you prefer per-triangle colours or another format? The model has one film hinge of 0.8 mm thickness (intentional, flexible). Is that feasible, or would you advise a minimum thickness? Please also advise how powder is removed from the 0.8 mm gap around the movable part.
+
+Auswertung des Musters (Eingabe für Revision R01):
+
+| Messung | Zweck |
+|---|---|
+| Stegdicke und Spalt (Messschieber, Fühlerlehre) | Abweichung zum Nennwert, Toleranz ±0,3 mm |
+| Schließ-/Öffnungszyklen bis Anriss | Ermüdung des Filmscharniers |
+| QR-Code mit 3 Smartphones, 2 Lichtlagen | Lesbarkeit, Logo-Aussparung |
+| Farbvergleich (Foto bei Tageslicht) mit `#2CE9FD`, `#3254A9`, `#4D1DB4` | Farbtreue, Anpassung der Texturfarben |
+| Haltekraft geschlossen / Aufstehen in 55° | Entscheidung über Rastelement |
+
+Hinweis: Der Lieferantenname steht in dieser Checkliste auf Wunsch des Nutzers im Klartext. `CLAUDE.md` verlangt Anonymisierung in `docs/suppliers/`; vor einer Veröffentlichung im öffentlichen Repo ist zu entscheiden, ob dieser Abschnitt anonymisiert wird.

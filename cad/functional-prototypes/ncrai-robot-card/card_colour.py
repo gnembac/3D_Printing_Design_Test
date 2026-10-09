@@ -223,7 +223,7 @@ def write_3mf(
     model_rels = (
         f'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="{pkg}/relationships">'
         '<Relationship Target="/3D/Texture/atlas.png" Id="rel1" '
-        'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodeltexture"/></Relationships>'
+        'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dtexture"/></Relationships>'
     )
     buf = io.BytesIO()
     atlas.save(buf, format="PNG", optimize=True)
