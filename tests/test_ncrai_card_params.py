@@ -10,7 +10,7 @@ CARD_DIR = (
 )
 sys.path.insert(0, str(CARD_DIR))
 
-from ncrai_card_params import SILHOUETTE, CardParams  # noqa: E402
+from ncrai_card_params import SILHOUETTE, CardParams, variant_a1, variant_a2  # noqa: E402
 
 
 def test_defaults_valid() -> None:
@@ -66,3 +66,19 @@ def test_silhouette_fits_inside_window_with_gap() -> None:
 def test_invalid_parameters_rejected(bad: dict[str, float]) -> None:
     with pytest.raises(ValueError):
         replace(CardParams(), **bad).validate()
+
+
+def test_a1_is_flagged_by_the_service_rules_and_a2_is_not() -> None:
+    a1 = variant_a1().mjf_findings()
+    assert any("print service minimum wall" in f for f in a1)
+    assert any("slot width" in f for f in a1)
+    a2 = variant_a2()
+    assert a2.web_t >= 1.0 and a2.gap >= 1.0
+    assert not any("print service" in f for f in a2.mjf_findings())
+
+
+def test_a2_keeps_strain_and_closed_thickness() -> None:
+    a2 = variant_a2()
+    assert a2.strain <= 0.05
+    assert a2.closed_thickness < 4.0
+    assert a2.margin >= 2.0

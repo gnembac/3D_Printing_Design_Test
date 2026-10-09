@@ -31,6 +31,17 @@ description: Erfahrungswissen aus dem Projekt 3D_Printing_Design_Test für Teile
 
 Nicht verwenden: Werte mit `quality_flag` `implausible`, `suspect_copy`, `not_traceable`. Bei Konflikten gilt der konservative Wert.
 
+## 2a Auftragsprüfung des Dienstes (JLC3DP, 2026-10-09, aus echter Rückmeldung)
+
+| Prüfung | Wert | Folge |
+|---|---|---|
+| Wandstärke | warnt unter 1,0 mm, ideal 2,0 mm; markiert die dünne Stelle rot mit Maß (Film-Steg 0,80 mm) | Steg mindestens 1,0 mm plus Reserve (1,1 mm), nie genau auf dem Grenzwert auslegen |
+| Text/Prägung/Gravur | Nylon und Resin ≥ 0,8 mm, Metall und Kunststoff ≥ 1,0 mm (Breite **und** Tiefe) | Schlitze und Spalte (auch Spielspalte) ≥ 1,0 mm planen; Reserve gegen Netz-Tessellierung |
+| Mehrteilige Aufträge | die Warnung nennt Maße je Teil (hier 0,56 / 0,60 / 0,80); Screenshot-Maße dem richtigen Teil zuordnen, bevor man ändert | |
+| Idealwert 2,0 mm | mit Filmscharnier unvereinbar (ε = h·θ/(2L) > 5 % schon bei ca. 23°); Dienstminimum 1,0 mm anstreben und das Muster entscheiden lassen | |
+
+Varianten behalten und mit Preset benennen (`--variant a1|a2`), beanstandete Dateien als überholt markieren, nicht überschreiben.
+
 ## 3 Dünne Karten und Scharniere
 
 | Erkenntnis | Wert / Formel |

@@ -19,6 +19,10 @@ from dataclasses import dataclass
 PAC_HP_WALL_MIN = 2.0
 MJF_DETAIL_MIN = 0.8
 MJF_CLEARANCE_MOVING_MIN = 0.6
+# manufacturer data (print service JLC3DP, order check 2026-10-09): wall >= 1.0 mm (ideal 2.0 mm),
+# embossed/engraved text and slots >= 0.8 mm for nylon/resin (>= 1.0 mm for metal/plastic)
+SERVICE_WALL_MIN = 1.0
+SERVICE_WALL_IDEAL = 2.0
 # ASSUMPTION: elastic limit of PA12-type nylon in bending, not a PAC-HP datasheet value (k.A.)
 ASSUMED_STRAIN_LIMIT = 0.05
 
@@ -43,11 +47,13 @@ class CardParams:
     card_w: float = 86.0
     card_h: float = 54.0
     t: float = 2.4  # plate and panel thickness (closed card thickness)
-    gap: float = 0.8  # clearance panel <-> window
-    web_t: float = 0.8  # film hinge thickness
-    web_len: float = 8.0  # free web length (arc length)
+    gap: float = 1.0  # clearance panel <-> window (slot width, keep >= 1.0 for the print service)
+    web_t: float = (
+        1.1  # film hinge thickness (1.0 mm service minimum + margin for mesh tessellation)
+    )
+    web_len: float = 9.0  # free web length (arc length)
     web_w: float = 24.0  # web width (= base bar width)
-    relax_deg: float = 55.0  # opening angle of the as-printed (relaxed) pose
+    relax_deg: float = 45.0  # opening angle of the as-printed (relaxed) pose
     qr_cx: float = -17.0  # QR centre x on the plate (y = 0)
 
     @property
@@ -117,8 +123,10 @@ class CardParams:
         out: list[str] = []
         if self.web_t < PAC_HP_WALL_MIN:
             out.append(f"web_t {self.web_t} < {PAC_HP_WALL_MIN} mm (PAC-HP wall) - film hinge")
-        if self.web_t < MJF_DETAIL_MIN:
-            out.append(f"web_t {self.web_t} < {MJF_DETAIL_MIN} mm (detail)")
+        if self.web_t < SERVICE_WALL_MIN:
+            out.append(f"web_t {self.web_t} < {SERVICE_WALL_MIN} mm (print service minimum wall)")
+        if self.gap < SERVICE_WALL_MIN:
+            out.append(f"gap {self.gap} < {SERVICE_WALL_MIN} mm (slot width, print service)")
         if self.gap < MJF_CLEARANCE_MOVING_MIN:
             out.append(f"gap {self.gap} < {MJF_CLEARANCE_MOVING_MIN} mm (moving parts)")
         if self.margin < PAC_HP_WALL_MIN:
@@ -126,3 +134,13 @@ class CardParams:
         if self.strain > ASSUMED_STRAIN_LIMIT:
             out.append(f"strain {self.strain:.1%} > assumed limit {ASSUMED_STRAIN_LIMIT:.0%}")
         return out
+
+
+def variant_a1() -> CardParams:
+    """First submission (web 0.8 mm, gap 0.8 mm, 55 deg): flagged by the print service."""
+    return CardParams(gap=0.8, web_t=0.8, relax_deg=55.0)
+
+
+def variant_a2() -> CardParams:
+    """Revision after the order check: web 1.1 mm, length 9 mm, gap 1.0 mm, 45 deg (default)."""
+    return CardParams()

@@ -4,8 +4,8 @@ Printed in the open pose: plate flat on z = 0 (top face z = t), web relaxed at r
 robot panel standing on the web. See ncrai_card_params.py for the concept and the rule deviations.
 
 Usage (needs cadquery):
-    python robot_card.py --out <dir> --date 2026-10-09
-Writes NCRAI-card_variant-A_EXP_MJF_PAC-HP_<date>.step (geometry only) and a scratch STL
+    python robot_card.py --out <dir> --date 2026-10-09 [--variant a1|a2]
+Writes NCRAI-card_variant-A[2]_EXP_MJF_PAC-HP_<date>.step (geometry only) and a scratch STL
 (<name>.stl, input for card_colour.py).
 """
 
@@ -19,9 +19,15 @@ from pathlib import Path
 import cadquery as cq
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from ncrai_card_params import SILHOUETTE, CardParams  # noqa: E402
+from ncrai_card_params import (  # noqa: E402
+    SILHOUETTE,
+    CardParams,
+    variant_a1,
+    variant_a2,
+)
 
-NAME = "NCRAI-card_variant-A_EXP_MJF_PAC-HP"
+NAMES = {"a1": "NCRAI-card_variant-A_EXP_MJF_PAC-HP", "a2": "NCRAI-card_variant-A2_EXP_MJF_PAC-HP"}
+PRESETS = {"a1": variant_a1, "a2": variant_a2}
 
 
 def _box(x0: float, x1: float, y0: float, y1: float, z0: float, z1: float) -> cq.Workplane:
@@ -89,10 +95,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--date", required=True)
+    ap.add_argument("--variant", choices=sorted(PRESETS), default="a2")
     ns = ap.parse_args()
     ns.out.mkdir(parents=True, exist_ok=True)
-    model = build()
-    stem = f"{NAME}_{ns.date}"
+    model = build(PRESETS[ns.variant]())
+    stem = f"{NAMES[ns.variant]}_{ns.date}"
     cq.exporters.export(model, str(ns.out / f"{stem}.step"))
     cq.exporters.export(model, str(ns.out / f"{stem}.stl"), tolerance=0.01, angularTolerance=0.05)
     print(f"wrote {stem}.step/.stl")

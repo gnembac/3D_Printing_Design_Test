@@ -1,4 +1,4 @@
-# NCRAI Roboter-Visitenkarte – Variante A (EXP)
+# NCRAI Roboter-Visitenkarte – Variante A2 (EXP)
 
 **Stand:** 2026-10-09 · **Revision:** EXP (experimentell, nicht freigegeben) · **Prozess/Material (Ziel):** MJF, PAC-HP Nylon, Vollfarbe · **Erstmuster:** nicht bestellt
 
@@ -11,8 +11,8 @@
 | Aussage | Wert | Einstufung |
 |---|---|---|
 | Kartendicke geschlossen | **2,4 mm** (Ziel < 4 mm erfüllt) | Entwurf |
-| Gedruckte Pose | offen, Steg entspannt bei 55°, Bounding Box 86 × 54 × 37,9 mm | Entwurf |
-| Scharnier | Filmscharnier 0,8 mm × 8 mm × 24 mm | **weicht von der PAC-HP-Wandregel (2,0 mm) ab** |
+| Gedruckte Pose | offen, Steg entspannt bei 45°, Bounding Box 86 × 54 × 33,5 mm | Entwurf |
+| Scharnier | Filmscharnier 1,1 mm × 9 mm × 24 mm | erfüllt das Dienstminimum 1,0 mm, **weicht von der PAC-HP-Wandregel (2,0 mm) ab** |
 | Randfaserdehnung beim Schließen | 4,8 % | `estimated` (ideale Biegung), Werkstoffgrenze PAC-HP **k.A.** |
 | Farbdaten | 3MF mit Texturatlas (3MF Materials Extension), 20 px/mm | Annahme der Lieferantenseite **k.A.** |
 | Haltemechanik geschlossen | keine (kein Rastelement) | offener Punkt, Muster entscheidet |
@@ -34,8 +34,8 @@ Folgerung (Ableitung): Unter 4 mm geht nur eine einlagige Karte, in der das Robo
 
 | Zustand | Beschreibung |
 |---|---|
-| Geschlossen (versandfertig) | Roboter-Paneel liegt bündig im Fenster der Platte (Spalt 0,8 mm). Oben QR-Code mit Logo, rechts der flach liegende Roboter. Unterseite: NCRAI-Wortlogo. Kartenmaß 86 × 54 × 2,4 mm. |
-| Offen (gedruckte Pose) | Das Paneel steht 55° geneigt auf dem Filmscharnier. Ein Abstützen ist nicht nötig, weil der Steg in dieser Lage spannungsfrei ist. |
+| Geschlossen (versandfertig) | Roboter-Paneel liegt bündig im Fenster der Platte (Spalt 1,0 mm). Oben QR-Code mit Logo, rechts der flach liegende Roboter. Unterseite: NCRAI-Wortlogo. Kartenmaß 86 × 54 × 2,4 mm. |
+| Offen (gedruckte Pose) | Das Paneel steht 45° geneigt auf dem Filmscharnier. Ein Abstützen ist nicht nötig, weil der Steg in dieser Lage spannungsfrei ist. |
 | Gedruckt | In der offenen Pose, Platte flach auf dem Bett, ohne Stützen (Pulverbett). Das Schließen biegt den Steg elastisch. |
 
 Rückstellung: Der Steg federt das Paneel beim Loslassen wieder auf. Ein Halteelement fehlt noch (Gummiband, Etui oder Rastnase wären Optionen, `ASSUMPTION`: für das Erstmuster entbehrlich).
@@ -59,15 +59,15 @@ Rückstellung: Der Steg federt das Paneel beim Loslassen wieder auf. Ein Halteel
 |---|---|---|---|
 | `card_w`, `card_h` | 86,0 / 54,0 | mm | Entwurf |
 | `t` (Platte, Paneel) | 2,4 | mm | ≥ 2,0 PAC-HP-Wand (Herstellerdaten, indikativ) |
-| `gap` Paneel ↔ Fenster | 0,8 | mm | ≥ 0,6 MJF bewegliche Teile (Herstellerdaten) |
-| `web_t`, `web_len`, `web_w` | 0,8 / 8,0 / 24,0 | mm | Entwurf, **weicht ab** (Wand 2,0), Detail min. 0,8 erfüllt |
-| `relax_deg` | 55 | ° | Entwurf, begrenzt die Dehnung auf 4,8 % |
-| `margin` (Plattenrand um Fenster) | 2,6 | mm | berechnet, ≥ 2,0 erfüllt |
+| `gap` Paneel ↔ Fenster | 1,0 | mm | ≥ 0,6 MJF bewegliche Teile; Schlitzbreite ≥ 0,8 (JLC3DP-Prüfung) |
+| `web_t`, `web_len`, `web_w` | 1,1 / 9,0 / 24,0 | mm | Dienstminimum 1,0 erfüllt (0,1 mm Reserve), **weicht ab** von Wand 2,0 |
+| `relax_deg` | 45 | ° | Entwurf, begrenzt die Dehnung auf 4,8 % |
+| `margin` (Plattenrand um Fenster) | 2,0 | mm | berechnet, ≥ 2,0 erfüllt (genau am Grenzwert) |
 | `qr_cx` | −17,0 | mm | Entwurf |
 | QR: Version / ECC / Modul / Logoblock | 4 / H / 1,2 mm / 9 × 5 | – | siehe Abschnitt 6 |
 | Silhouette | 9 Rechtecke, 28 × 40 mm | mm | eigener Entwurf, Mindeststege 4,0 mm (Arme), Schlitze 1,2 mm |
 
-Toleranz laut Hersteller ±0,3 mm bis 100 mm (indikativ). Spalt 0,8 mm ergibt damit im Worst Case 0,2–1,4 mm (Ableitung, beide Flächen ±0,3 mm). Nach dem Muster ggf. anpassen.
+Toleranz laut Hersteller ±0,3 mm bis 100 mm (indikativ). Spalt 1,0 mm ergibt damit im Worst Case 0,4–1,6 mm (Ableitung, beide Flächen ±0,3 mm). Nach dem Muster ggf. anpassen.
 
 ## 5 Geometrieprüfung (2026-10-09, CadQuery 2.8.0, trimesh)
 
@@ -75,10 +75,10 @@ Toleranz laut Hersteller ±0,3 mm bis 100 mm (indikativ). Spalt 0,8 mm ergibt da
 |---|---|
 | Solid gültig, Anzahl Körper | gültig, 1 Körper (Platte, Steg und Paneel verschmolzen) |
 | STL/3MF wasserdicht | ja |
-| STEP-Reimport | gültig, 1 Körper, Volumen 9 662 mm³ |
-| Geschlossene Pose | Abstand Paneel ↔ Platte 0,80 mm, keine Überlappung, Paneel bündig 0…2,4 mm |
+| STEP-Reimport | A1 geprüft (gültig, 1 Körper); A2 gebaut mit 9 612 mm³, 1 Körper, STL/3MF wasserdicht |
+| Geschlossene Pose | Abstand Paneel ↔ Platte 1,00 mm, keine Überlappung, Paneel bündig 0…2,4 mm |
 | Kartendicke geschlossen | 2,4 mm |
-| Regelabgleich (`mjf_findings`) | genau 1 Abweichung: Filmscharnier 0,8 mm < 2,0 mm Wand |
+| Regelabgleich (`mjf_findings`) | genau 1 Abweichung: Filmscharnier 1,1 mm < 2,0 mm Wand (Dienstminimum 1,0 mm erfüllt) |
 
 Nicht geprüft: Kollision beim Schließvorgang (nur Endlagen), FEM, Ermüdung, Pulverentfernung.
 
@@ -111,8 +111,8 @@ Ein größeres Logo verbraucht die Fehlerreserve. Lesbarkeit der Logobuchstaben 
 |---|---|
 | Format | 3MF, Materials Extension (`texture2d`, `texture2dgroup`, `requiredextensions="m"`), Filter `nearest` |
 | Textur | ein Atlas 1720 × 3020 px (20 px/mm): Plattenoberseite (QR), Plattenrückseite (Wortlogo, gespiegelt vorgezeichnet), Paneelvorderseite (Roboter mit Verlauf, Visier, Brust mit Dome-Symbol), Vollfarbflächen für Kanten und Paneelrückseite |
-| Dateigröße | 0,3 MB, 476 Dreiecke |
-| Verifikation | Strenger Lesetest mit lib3mf (0 Warnungen, 1 Textur, 1 Texturgruppe, 476 Dreiecke); Rendering direkt aus den 3MF-Daten (UV-Zuordnung geprüft, QR lesbar). Ein erster Entwurf scheiterte hier an einem falschen Beziehungstyp für die Textur (`…/3dtexture` ist richtig) und wurde behoben |
+| Dateigröße | 0,3 MB, 420 Dreiecke |
+| Verifikation | Strenger Lesetest mit lib3mf (0 Warnungen, 1 Textur, 1 Texturgruppe, 420 Dreiecke); Rendering direkt aus den 3MF-Daten (UV-Zuordnung geprüft, QR lesbar). Ein erster Entwurf scheiterte hier an einem falschen Beziehungstyp für die Textur (`…/3dtexture` ist richtig) und wurde behoben |
 | Risiko | Lieferant liest die Extension nicht → Datei wird abgelehnt oder grau gedruckt. Daher `requiredextensions` gesetzt, damit es nicht still passiert |
 
 Farbraum und Wiedergabe des Verlaufs im Vollfarb-MJF-Druck sind **k.A.** und werden am Erstmuster beurteilt.
@@ -121,7 +121,7 @@ Farbraum und Wiedergabe des Verlaufs im Vollfarb-MJF-Druck sind **k.A.** und wer
 
 | Risiko | Wirkung | Maßnahme | Priorität |
 |---|---|---|---|
-| Filmscharnier bricht oder ermüdet | Karte unbrauchbar | Muster, Scharnier-Coupon (Stegdicke 0,6/0,8/1,0 × Länge 6/8/10 mm) | hoch |
+| Filmscharnier bricht oder ermüdet | Karte unbrauchbar | Muster, Scharnier-Coupon (Stegdicke 1,0/1,1/1,3 × Länge 8/9/10 mm) | hoch |
 | Steg zu dünn für den Druck (Wand-/Detailregel) | Steg fehlt oder reißt beim Entpulvern | DFM-Rückmeldung, ggf. 1,0 mm | hoch |
 | Kein Haltemechanismus | Karte klappt auf | Etui oder Rastnase nach Muster | mittel |
 | Textur-3MF wird nicht akzeptiert | keine Vollfarbe | DFM vor Bestellung, Rückfallformate | hoch |
@@ -146,13 +146,14 @@ Farbraum und Wiedergabe des Verlaufs im Vollfarb-MJF-Druck sind **k.A.** und wer
 | `qr_logo.py` | QR-Code mit Logo |
 | `card_colour.py` | Texturatlas, UVs, 3MF, Software-Rendering zur Prüfung |
 | `assets/` | Logo (transparent), QR (SVG in mm, PNG, CSV), Vorschauen |
-| `exports/step/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.step` | Geometrie (ohne Farbe), abgeleitet |
-| `exports/3mf/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf` | Geometrie + Farbe, abgeleitet |
-| `exports/upload-jlc3dp/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf` | identische Kopie für den Upload (Erstmuster) |
+| `exports/step/NCRAI-card_variant-A2_EXP_MJF_PAC-HP_2026-10-09.step` | Geometrie (ohne Farbe), abgeleitet, **aktuell** |
+| `exports/3mf/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf`, `…step` | Variante A1, vom Dienst beanstandet (Steg 0,8 mm), überholt |
+| `exports/3mf/NCRAI-card_variant-A2_EXP_MJF_PAC-HP_2026-10-09.3mf` | Geometrie + Farbe, abgeleitet, **aktuell** |
+| `exports/upload-jlc3dp/NCRAI-card_variant-A2_EXP_MJF_PAC-HP_2026-10-09.3mf` | identische Kopie für den Upload (Erstmuster) |
 
 ```bash
 python cad/functional-prototypes/ncrai-robot-card/robot_card.py --out <dir> --date 2026-10-09
-python cad/functional-prototypes/ncrai-robot-card/card_colour.py --stl <dir>/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.stl --out <dir>
+python cad/functional-prototypes/ncrai-robot-card/card_colour.py --stl <dir>/NCRAI-card_variant-A2_EXP_MJF_PAC-HP_2026-10-09.stl --out <dir>
 ruff format . && ruff check . && pytest -q
 python scripts/validate_cad_exports.py && python scripts/generate_manifest.py
 ```
@@ -173,13 +174,13 @@ Grundlage: Hilfeseiten des Druckdienstes JLC3DP (Herstellerdaten, indikativ; Sei
 
 | Punkt | Vorgabe / Stand |
 |---|---|
-| Datei | `exports/upload-jlc3dp/NCRAI-card_variant-A_EXP_MJF_PAC-HP_2026-10-09.3mf` (0,3 MB, 1 Schale, 1 Objekt, mm) |
+| Datei | `exports/upload-jlc3dp/NCRAI-card_variant-A2_EXP_MJF_PAC-HP_2026-10-09.3mf` (0,3 MB, 1 Schale, 1 Objekt, mm) |
 | Dienstvorgabe PAC-HP | nur 3MF, **mit allen Farbdaten**, sonst Fertigung in Grau; eine Schale je Datei (frühere Ablehnung mehrerer Schalen beim Badge) |
 | Bestelloptionen | Verfahren MJF, Material PAC-HP Nylon (Full Color), Menge 1, Standard-Oberfläche |
-| Maße | 86 × 54 × 37,9 mm gedruckte Pose, Bauraum 320 × 175 × 225 mm, Toleranz ±0,3 mm (bis 100 mm) |
+| Maße | 86 × 54 × 33,5 mm gedruckte Pose, Bauraum 320 × 175 × 225 mm, Toleranz ±0,3 mm (bis 100 mm) |
 | Preis / Lieferzeit | ab 17 USD, Bauzeit 72 h laut Angabe des Nutzers; tatsächliches Angebot **k.A.** |
 | Farbe im 3MF | Textur-3MF (Materials Extension). **Ob der Dienst die Textur liest, ist k.A.** |
-| Wandregel | Filmscharnier 0,8 mm liegt unter der Wandvorgabe 2,0 mm; Datei kann bei der Prüfung beanstandet werden |
+| Wandregel | Filmscharnier 1,1 mm liegt über dem Dienstminimum 1,0 mm, aber unter der Idealvorgabe 2,0 mm; Prüfung durch den Dienst steht für A2 noch aus |
 
 Ablauf (nur mit deiner Freigabe, ich lade nichts hoch):
 
@@ -197,6 +198,22 @@ Auswertung des Musters (Eingabe für Revision R01):
 | Schließ-/Öffnungszyklen bis Anriss | Ermüdung des Filmscharniers |
 | QR-Code mit 3 Smartphones, 2 Lichtlagen | Lesbarkeit, Logo-Aussparung |
 | Farbvergleich (Foto bei Tageslicht) mit `#2CE9FD`, `#3254A9`, `#4D1DB4` | Farbtreue, Anpassung der Texturfarben |
-| Haltekraft geschlossen / Aufstehen in 55° | Entscheidung über Rastelement |
+| Haltekraft geschlossen / Aufstehen in 45° | Entscheidung über Rastelement |
 
 Hinweis: Der Lieferantenname steht in dieser Checkliste auf Wunsch des Nutzers im Klartext. `CLAUDE.md` verlangt Anonymisierung in `docs/suppliers/`; vor einer Veröffentlichung im öffentlichen Repo ist zu entscheiden, ob dieser Abschnitt anonymisiert wird.
+
+## 13 Rückmeldung der Auftragsprüfung (2026-10-09) und Variante A2
+
+Der Dienst meldete zu Variante A1 (Screenshot der Auftragsprüfung, Markierung „C 0,80“ am Steg): Wandstärke zu dünn, empfohlen mindestens 1,0 mm, ideal 2,0 mm; Text/Prägung mindestens 0,8 mm (Nylon/Resin), mindestens 1,0 mm (Metall/Kunststoff). Die Textwarnungen im Screenshot (A 0,56 mm, B 0,60 mm) gehören zu den anderen Teilen desselben Auftrags (BJCP-Badge, NCFAI-Karte), **nicht** zur Roboterkarte; die Roboterkarte hat keinen Reliefschriftzug (Beschriftung nur als Farbe).
+
+| Punkt | A1 | A2 |
+|---|---|---|
+| Steg | 0,8 mm (vom Dienst markiert) | **1,1 mm** (Minimum 1,0 mm plus 0,1 mm Reserve für Netz-Tessellierung) |
+| Steglänge, Öffnungswinkel | 8 mm, 55° | 9 mm, 45° (Dehnung weiter 4,8 %) |
+| Spalt Paneel ↔ Fenster | 0,8 mm | **1,0 mm** (Schlitzbreite mit Reserve) |
+| Plattenrand um das Fenster | 2,6 mm | 2,0 mm (genau am Grenzwert PAC-HP) |
+| Bounding Box gedruckt | 86 × 54 × 37,9 mm | 86 × 54 × 33,5 mm |
+
+Nicht erreichbar: die Idealvorgabe 2,0 mm. Ein 2,0-mm-Steg ergäbe bei 9 mm Länge schon bei 23° mehr als 5 % Dehnung (Ableitung, ε = h·θ/(2L)); ein Filmscharnier und eine Wand von 2,0 mm schließen sich aus. Ob 1,1 mm freigegeben wird, bleibt **k.A.**; fällt die Prüfung erneut negativ aus, wäre ein scharnierloses Konzept (z. B. Steckfuß) der nächste Schritt.
+
+Erzeugen: `robot_card.py --variant a1|a2` und `card_colour.py --variant a1|a2` (A1 bleibt reproduzierbar).

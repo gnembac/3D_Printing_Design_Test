@@ -9,7 +9,7 @@ ASSUMPTION: the supplier accepts textured 3MF (Materials Extension). Not verifie
 ask in the DFM request; fallback formats are OBJ+MTL+PNG or PLY with vertex colours.
 
 Usage (needs numpy, trimesh, pillow, qrcode; opencv-python-headless for the QR check):
-    python card_colour.py --stl <robot_card.stl> --out <dir>
+    python card_colour.py --stl <robot_card.stl> --out <dir> [--variant a1|a2]
 Writes <stem>.3mf, atlas.png and preview PNGs (rendered from the 3MF data, not from the CAD).
 """
 
@@ -29,7 +29,7 @@ from PIL import Image, ImageDraw, ImageOps
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import qr_logo  # noqa: E402
-from ncrai_card_params import CardParams  # noqa: E402
+from ncrai_card_params import CardParams, variant_a1, variant_a2  # noqa: E402
 
 PX = 20  # texture pixels per mm
 # ASSUMPTION: first-sample colours from the logo (measured, estimated); adjust after the sample
@@ -301,8 +301,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--stl", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--variant", choices=("a1", "a2"), default="a2")
     ns = ap.parse_args()
-    p = CardParams()
+    p = variant_a1() if ns.variant == "a1" else variant_a2()
     p.validate()
     mesh = trimesh.load(ns.stl, process=True)
     if not mesh.is_watertight:
