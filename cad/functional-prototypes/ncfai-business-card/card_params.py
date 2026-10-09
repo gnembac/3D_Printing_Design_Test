@@ -20,7 +20,9 @@ SUPPLIER_WALL_MIN = 2.0  # PAC-HP minimum wall thickness
 SUPPLIER_TOL = 0.3  # +/- general tolerance, models <= 100 mm
 SUPPLIER_HOLE_MIN = 1.5  # minimum hole diameter (holes tend to come out undersize)
 # --- project requirement -----------------------------------------------------------------
-THICKNESS_MAX = 2.5  # user requirement: material thickness max. 2.5 mm
+THICKNESS_MAX = 2.5  # user requirement: material thickness max. 2.5 mm (nominal, incl. relief)
+RELIEF_MIN = 0.5  # embossed/engraved depth: MJF article value; the CN-A design rule says 0.8
+FEATURE_MIN = 0.8  # embossed/engraved width (conservative CN-A value)
 
 
 @dataclass(frozen=True)
@@ -34,10 +36,13 @@ class Bubble:
 class CardParams:
     width: float = 85.0
     height: float = 55.0
-    thickness: float = 2.2  # nominal; 2.2 + 0.3 tol = 2.5 max, 2.2 > wall min 2.0
+    base_thickness: float = 2.0  # base plate = supplier wall minimum
+    relief: float = 0.5  # raised level above the base plane; engraving cuts down to the base
+    min_feature: float = FEATURE_MIN  # min. width of raised webs and engraved grooves
+    relief_margin: float = 3.0  # raised features keep this distance from the card edge
     corner_r: float = 4.0  # outer corner radius (no sharp corners -> less warp-prone)
     seed: str = "NCFAI-UNIKAT-001"
-    n_bubbles: int = 7  # 0 = flat control variant without perforation
+    n_bubbles: int = 0  # optional through-holes ("bubbles"); 0 = none (default since Rev. 3)
     bubble_d_min: float = 2.6
     bubble_d_max: float = 4.6
     ligament_min: float = 2.4  # min. material between holes (supplier wall min 2.0 + margin)
@@ -46,13 +51,19 @@ class CardParams:
     bubble_zone: tuple[float, float, float, float] = field(default=(49.0, 35.0, 81.0, 51.0))
     arc_tol: float = 0.02  # max. chord error when discretising circles, mm
 
+    @property
+    def total_thickness(self) -> float:
+        return self.base_thickness + self.relief
+
     def validate(self) -> None:
-        if self.thickness < SUPPLIER_WALL_MIN:
-            raise ValueError(f"thickness {self.thickness} < supplier wall minimum")
-        if self.thickness + SUPPLIER_TOL > THICKNESS_MAX + 1e-9:
-            raise ValueError(
-                f"thickness {self.thickness} + tolerance {SUPPLIER_TOL} exceeds {THICKNESS_MAX} mm"
-            )
+        if self.base_thickness < SUPPLIER_WALL_MIN:
+            raise ValueError(f"base_thickness {self.base_thickness} < supplier wall minimum")
+        if self.total_thickness > THICKNESS_MAX + 1e-9:
+            raise ValueError(f"base + relief = {self.total_thickness} exceeds {THICKNESS_MAX} mm")
+        if self.relief != 0 and self.relief < RELIEF_MIN:
+            raise ValueError(f"relief {self.relief} below {RELIEF_MIN} mm (0 = flat variant)")
+        if self.min_feature < FEATURE_MIN:
+            raise ValueError(f"min_feature {self.min_feature} below {FEATURE_MIN} mm")
         if not 2.0 <= self.corner_r <= min(self.width, self.height) / 2:
             raise ValueError("corner_r must be 2 mm .. half of the short side")
         if self.n_bubbles < 0:

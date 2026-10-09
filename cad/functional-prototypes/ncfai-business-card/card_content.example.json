@@ -1,5 +1,5 @@
 {
-  "name": "Erika Mustermann",
+  "name": "Ada Lee",
   "company": "Example Consulting – Flavour & AI",
   "qualification": "Example Qualification & Example Title",
   "address": [
@@ -7,5 +7,15 @@
     "D-00000 Musterstadt",
     "Germany / Bavaria / Frankonia"
   ],
-  "url": "https://example.com/"
+  "url": "https://example.com/",
+  "badges": [
+    [
+      "EXAMPLE",
+      "Example Title"
+    ],
+    [
+      "WORD",
+      "Example Judge"
+    ]
+  ]
 }

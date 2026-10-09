@@ -11,3 +11,4 @@ shapely
 mapbox-earcut
 segno
 zxing-cpp
+fonttools

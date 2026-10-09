@@ -1,9 +1,12 @@
 """Generate the NCFAI full-colour 3D-printed business card (single shell, textured OBJ + STL).
 
+Geometry: base plate 2.0 mm + 0.5 mm relief on the front (raised name, hop cone, badges with
+ENGRAVED lettering; engraving cuts down to the base plane, never below). Back is flat + QR code.
+
 Outputs (into --out, filenames follow the project convention):
   <stem>.stl              geometry only, binary, one watertight shell (DFM check / fallback)
   <stem>_obj-package.zip  OBJ + MTL + 2 PNG textures (front / back) = full-colour carrier
-  <stem>_preview.png      flat preview of both faces incl. outline and holes
+  <stem>_preview.png      preview: front (with relief shading) and back
   <stem>.step             only if `cadquery` is installed (parametric master geometry)
 
 The card text lives in a JSON file (personal data -> keep it outside git, see
@@ -28,7 +31,9 @@ from pathlib import Path
 import numpy as np
 import trimesh
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from shapely import affinity
 from shapely.geometry import Point, Polygon, box
+from shapely.geometry.base import BaseGeometry
 from shapely.geometry.polygon import orient
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -41,6 +46,12 @@ from card_params import (  # noqa: E402
     seed_tag,
 )
 from card_qr import QrLayout, make_layout  # noqa: E402
+from card_relief import (  # noqa: E402
+    FrontRelief,
+    badge_layout,
+    build_front_relief,
+    parts,
+)
 
 # Colours sampled from the NCFAI logo (`estimated`, sRGB; process colour will differ)
 ORANGE = (253, 138, 36)
@@ -56,6 +67,8 @@ PRINT_MARGIN = 1.5  # keep ink away from the card edge (colour/geometry registra
 RING_GAP, RING_W = 0.6, 0.9  # colour ring around each hole, mm
 QR_DARK = (0, 0, 0)  # K black: max. contrast (supplier colour mapping `k.A.`)
 QR_RIGHT, QR_TOP = 7.0, 7.0  # module area: distance from right edge / top, mm
+GREEN_FLOOR = (38, 94, 30)  # hop cone groove floor (`estimated`)
+GREEN_TOP, GREEN_BOT = (160, 207, 66), (56, 140, 46)  # bract colours top -> tip (`estimated`)
 MIN_STROKE = 0.4  # smallest printed colour stroke, mm (`ASSUMPTION`, verify with supplier)
 
 
@@ -66,12 +79,18 @@ class CardContent:
     qualification: str
     address: tuple[str, ...]
     url: str = ""
+    badges: tuple[tuple[str, str], ...] = ()  # (engraved word, caption below)
 
     @staticmethod
     def load(path: Path) -> CardContent:
         d = json.loads(path.read_text(encoding="utf-8"))
         return CardContent(
-            d["name"], d["company"], d["qualification"], tuple(d["address"]), d.get("url", "")
+            d["name"],
+            d["company"],
+            d["qualification"],
+            tuple(d["address"]),
+            d.get("url", ""),
+            tuple((w, cap) for w, cap in d.get("badges", [])),
         )
 
 
@@ -132,8 +151,27 @@ def _draw_rings(
             draw.ellipse(ri, fill=(255, 255, 255))
 
 
+def _paint(
+    draw: ImageDraw.ImageDraw,
+    geom: BaseGeometry,
+    fill: tuple[int, int, int],
+    ppmm: float,
+    hole: tuple[int, int, int] = (255, 255, 255),
+) -> None:
+    """Fill shapely geometry (card coordinates, mm) into the texture; larger shapes first."""
+    for poly in sorted(parts(geom), key=lambda q: -q.area):
+        draw.polygon([(x * ppmm, y * ppmm) for x, y in poly.exterior.coords], fill=fill)
+        for ring in poly.interiors:
+            draw.polygon([(x * ppmm, y * ppmm) for x, y in ring.coords], fill=hole)
+
+
 def render_front(
-    p: CardParams, c: CardContent, logo: Image.Image, bubbles: list[Bubble], ppmm: float
+    p: CardParams,
+    c: CardContent,
+    logo: Image.Image,
+    bubbles: list[Bubble],
+    ppmm: float,
+    relief: FrontRelief,
 ) -> Image.Image:
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
     d = ImageDraw.Draw(img)
@@ -142,28 +180,38 @@ def render_front(
     lh = lw * logo.height / logo.width
     big = logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS)
     img.paste(big, (_px(5.0, ppmm), _px(5.0, ppmm)))
-    # name, two lines right of the logo
-    first, _, last = c.name.partition(" ")
-    fn = font(7.2, ppmm)
-    d.text((_px(41.0, ppmm), _px(5.0, ppmm)), first, font=fn, fill=NAVY)
-    d.text((_px(41.0, ppmm), _px(5.0 + 8.4, ppmm)), last, font=fn, fill=NAVY)
-    # gradient rule
-    y0, y1 = _px(24.6, ppmm), _px(24.6 + 0.6, ppmm)
+    # gradient rule (flat colour, base level)
+    y0, y1 = _px(23.9, ppmm), _px(23.9 + 0.6, ppmm)
     for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
         d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
-    # company + qualification
+    # flat (printed, no relief) small text: strokes too thin for 0.8 mm relief
     f2 = font(2.9, ppmm)
-    d.text((_px(5.0, ppmm), _px(27.0, ppmm)), c.company, font=f2, fill=NAVY)
-    d.text((_px(5.0, ppmm), _px(31.2, ppmm)), c.qualification, font=f2, fill=NAVY)
-    # address block bottom-left
+    d.text((_px(5.0, ppmm), _px(26.2, ppmm)), c.company, font=f2, fill=NAVY)
     f3 = font(2.6, ppmm)
+    if c.badges:
+        for (_, cap), (x0, _) in zip(
+            c.badges, badge_layout(tuple(w for w, _ in c.badges)), strict=True
+        ):
+            d.text((_px(x0 + 1.0, ppmm), _px(38.6, ppmm)), cap, font=f3, fill=NAVY)
+    else:
+        d.text((_px(5.0, ppmm), _px(31.2, ppmm)), c.qualification, font=f2, fill=NAVY)
     for i, line in enumerate(c.address):
-        d.text((_px(5.0, ppmm), _px(38.0 + 3.7 * i, ppmm)), line, font=f3, fill=NAVY)
+        d.text((_px(5.0, ppmm), _px(42.4 + 3.4 * i, ppmm)), line, font=f3, fill=NAVY)
+    # hop cone: groove floor (base level) dark green, bracts (raised) lighter green
+    _paint(d, relief.cone.silhouette, GREEN_FLOOR, ppmm)
+    for tile, t in relief.cone.tiles:
+        _paint(d, tile, lerp(GREEN_TOP, GREEN_BOT, t), ppmm)
+    _paint(d, relief.cone.stalk, lerp(GREEN_TOP, GREEN_BOT, 0.3), ppmm)
+    # raised name + badges (engraved letters = white base plane showing through)
+    _paint(d, relief.name, NAVY, ppmm)
+    _paint(d, relief.badges, NAVY, ppmm)
     _draw_rings(d, bubbles, p, ppmm, mirror=False)
     return img
 
 
-def render_back(p: CardParams, c: CardContent, bubbles: list[Bubble], ppmm: float) -> Image.Image:
+def render_back(
+    p: CardParams, c: CardContent, logo: Image.Image, bubbles: list[Bubble], ppmm: float
+) -> Image.Image:
     """Back face as seen from behind (not mirrored: this is the picture the viewer sees).
 
     Left column: unique ID + foam bubbles around the hole rings; right: large QR code (c.url).
@@ -172,7 +220,7 @@ def render_back(p: CardParams, c: CardContent, bubbles: list[Bubble], ppmm: floa
     d = ImageDraw.Draw(img)
     rng = random.Random(seed_int(p.seed) + 1)
     holes = [(p.width - b.x, b.y, b.d / 2 + RING_GAP + RING_W) for b in bubbles]
-    keep: list[tuple[float, float, float, float]] = [(5.0, 4.0, 38.0, 26.0)]  # ID text block
+    keep: list[tuple[float, float, float, float]] = [(4.0, 4.0, 38.5, 34.0)]  # logo + ID text
     qr = None
     if c.url:
         qr = make_layout(c.url, p.width - QR_RIGHT, QR_TOP, ppmm)
@@ -212,17 +260,19 @@ def render_back(p: CardParams, c: CardContent, bubbles: list[Bubble], ppmm: floa
                 fill=lerp(col, (255, 255, 255), 0.65),
             )
     _draw_rings(d, bubbles, p, ppmm, mirror=True)
-    # unique ID block (white backing keeps text readable if a bubble overlaps)
-    d.text((_px(5.0, ppmm), _px(5.0, ppmm)), "UNIKAT", font=font(5.2, ppmm), fill=NAVY)
+    # logo (replaces the former text block) + unique ID
+    lw = 33.0
+    lh = lw * logo.height / logo.width
+    img.paste(
+        logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS), (_px(5.0, ppmm), _px(5.0, ppmm))
+    )
+    d.text((_px(5.0, ppmm), _px(5.0 + lh + 2.6, ppmm)), "UNIKAT", font=font(3.6, ppmm), fill=NAVY)
     d.text(
-        (_px(5.0, ppmm), _px(11.8, ppmm)),
+        (_px(5.0, ppmm), _px(5.0 + lh + 7.0, ppmm)),
         f"No. {seed_tag(p.seed)}",
         font=font(2.8, ppmm),
         fill=NAVY,
     )
-    f = font(2.6, ppmm)
-    for i, line in enumerate(c.company.replace(" \u2013 ", "\n").split("\n")):
-        d.text((_px(5.0, ppmm), _px(16.2 + 3.6 * i, ppmm)), line, font=f, fill=NAVY)
     if qr is not None:
         m = qr.module_mm
         for r_i, row in enumerate(qr.matrix):
@@ -291,75 +341,120 @@ def outline_polygon(p: CardParams, bubbles: list[Bubble]) -> Polygon:
 
 @dataclass
 class CardMesh:
-    verts: np.ndarray  # (n, 3) all vertices (top, bottom, side)
-    uv: np.ndarray  # (2n_top, 2): vt for top [0:n_top] and bottom [n_top:]
-    top_faces: np.ndarray
-    bottom_faces: np.ndarray
-    side_faces: np.ndarray
-    n_top: int
+    verts: np.ndarray  # (n, 3)
+    uv: np.ndarray  # (n, 2) texture coordinates for every vertex
+    groups: dict[str, np.ndarray]  # material (front | back | edge) -> faces
 
     def geometry(self) -> trimesh.Trimesh:
-        faces = np.vstack([self.top_faces, self.bottom_faces, self.side_faces])
+        faces = np.vstack([f for f in self.groups.values() if len(f)])
         m = trimesh.Trimesh(self.verts.copy(), faces, process=True)
         m.merge_vertices()
         return m
 
 
-def build_mesh(p: CardParams, bubbles: list[Bubble]) -> CardMesh:
-    poly = outline_polygon(p, bubbles)
+def _tri(poly: Polygon) -> tuple[np.ndarray, np.ndarray]:
+    """Earcut triangulation (no Steiner points), all triangles CCW -> normal +z."""
     v2, f = trimesh.creation.triangulate_polygon(poly, engine="earcut")
-    v2 = np.asarray(v2, dtype=float)
-    f = np.asarray(f)
+    v2, f = np.asarray(v2, dtype=float), np.asarray(f)
     a, b, c = v2[f[:, 0]], v2[f[:, 1]], v2[f[:, 2]]
     cross = (b[:, 0] - a[:, 0]) * (c[:, 1] - a[:, 1]) - (b[:, 1] - a[:, 1]) * (c[:, 0] - a[:, 0])
-    f = np.where((cross < 0)[:, None], f[:, ::-1], f)  # all CCW -> normal +z on top
-    n = len(v2)
-    t = p.thickness
-    top = np.column_stack([v2, np.full(n, t)])
-    bot = np.column_stack([v2, np.zeros(n)])
-    side_v: list[np.ndarray] = []
-    side_f: list[list[int]] = []
-    base = 2 * n
-    for ring in (poly.exterior, *poly.interiors):
-        pts = np.asarray(ring.coords)[:-1]
-        for i in range(len(pts)):
-            q0, q1 = pts[i], pts[(i + 1) % len(pts)]
-            side_v += [
-                [q0[0], q0[1], 0.0],
-                [q1[0], q1[1], 0.0],
-                [q1[0], q1[1], t],
-                [q0[0], q0[1], t],
-            ]
-            side_f += [[base, base + 1, base + 2], [base, base + 2, base + 3]]
-            base += 4
-    verts = np.vstack([top, bot, np.asarray(side_v)])
-    u_front = (v2[:, 0] + p.width / 2) / p.width
-    u_back = (p.width / 2 - v2[:, 0]) / p.width
-    vv = (v2[:, 1] + p.height / 2) / p.height
-    uv = np.vstack([np.column_stack([u_front, vv]), np.column_stack([u_back, vv])])
-    return CardMesh(verts, uv, f, f[:, ::-1] + n, np.asarray(side_f), n)
+    return v2, np.where((cross < 0)[:, None], f[:, ::-1], f)
+
+
+def _low_regions(outline: Polygon, raised: list[Polygon]) -> list[Polygon]:
+    """Base-plane regions = outline minus raised islands, built from the raised rings themselves
+    (exact coordinates -> watertight). Supports raised polygons nested in engraved cut-outs."""
+    inner = [(Polygon(r), q) for q in raised for r in q.interiors]
+    holders = {
+        id(q): any(ring.contains(q) for ring, owner in inner if owner is not q) for q in raised
+    }
+    top = [q for q in raised if not holders[id(q)]]
+    regions = [
+        orient(
+            Polygon(
+                outline.exterior.coords,
+                [r.coords for r in outline.interiors] + [q.exterior.coords for q in top],
+            ),
+            1.0,
+        )
+    ]
+    for ring, owner in inner:
+        islands = [q for q in raised if q is not owner and ring.contains(q)]
+        regions.append(
+            orient(Polygon(ring.exterior.coords, [q.exterior.coords for q in islands]), 1.0)
+        )
+    return regions
+
+
+def build_mesh(p: CardParams, bubbles: list[Bubble], raised_card: BaseGeometry | None) -> CardMesh:
+    """Single shell: bottom z=0, base plane z=base, raised plane z=base+relief (front only)."""
+    W, H, zb, zt = p.width, p.height, p.base_thickness, p.total_thickness
+    outline = outline_polygon(p, bubbles)
+    raised: list[Polygon] = []
+    if raised_card is not None and p.relief > 0 and not raised_card.is_empty:
+        g = affinity.affine_transform(raised_card, [1, 0, 0, -1, -W / 2, H / 2])
+        raised = [orient(q, 1.0) for q in parts(g)]
+        keep = outline.buffer(-p.relief_margin)
+        if not all(keep.contains(q) for q in raised):
+            raise ValueError("raised feature closer than relief_margin to the card edge/hole")
+    vs: list[np.ndarray] = []
+    us: list[np.ndarray] = []
+    groups: dict[str, list[np.ndarray]] = {"front": [], "back": [], "edge": []}
+    count = [0]
+
+    def uv_front(xy: np.ndarray) -> np.ndarray:
+        return np.column_stack([(xy[:, 0] + W / 2) / W, (xy[:, 1] + H / 2) / H])
+
+    def uv_back(xy: np.ndarray) -> np.ndarray:
+        return np.column_stack([(W / 2 - xy[:, 0]) / W, (xy[:, 1] + H / 2) / H])
+
+    def add(v3: np.ndarray, uv: np.ndarray, faces: np.ndarray, mat: str) -> None:
+        vs.append(v3)
+        us.append(uv)
+        groups[mat].append(faces + count[0])
+        count[0] += len(v3)
+
+    def face(poly: Polygon, z: float, mat: str, uvf, flip: bool = False) -> None:  # noqa: ANN001
+        v2, f = _tri(poly)
+        add(np.column_stack([v2, np.full(len(v2), z)]), uvf(v2), f[:, ::-1] if flip else f, mat)
+
+    def walls(poly: Polygon, z0: float, z1: float, mat: str, uvf) -> None:  # noqa: ANN001
+        for ring in (poly.exterior, *poly.interiors):
+            pts = np.asarray(ring.coords)[:-1]
+            nxt = np.roll(pts, -1, axis=0)
+            m = len(pts)
+            xy = np.stack([pts, nxt, nxt, pts], axis=1).reshape(-1, 2)  # 4 vertices per segment
+            z = np.tile([z0, z0, z1, z1], m)
+            k = np.arange(m)[:, None] * 4
+            f = np.concatenate([k + [0, 1, 2], k + [0, 2, 3]]).reshape(-1, 3)
+            add(np.column_stack([xy, z]), uvf(xy), f, mat)
+
+    for q in parts(outline):
+        face(q, 0.0, "back", uv_back, flip=True)
+        walls(q, 0.0, zb, "edge", uv_front)
+    low = _low_regions(outline, raised) if raised else parts(outline)
+    for q in low:
+        face(q, zb, "front", uv_front)
+    for q in raised:
+        face(q, zt, "front", uv_front)
+        walls(q, zb, zt, "front", uv_front)  # wall colour = texture colour at the rim
+    return CardMesh(
+        np.vstack(vs),
+        np.vstack(us),
+        {k: np.vstack(v) if v else np.empty((0, 3), int) for k, v in groups.items()},
+    )
 
 
 def write_obj_package(
-    path: Path,
-    m: CardMesh,
-    front: Image.Image,
-    back: Image.Image,
-    ppmm: float,
-    dpi_note: str,
+    path: Path, m: CardMesh, front: Image.Image, back: Image.Image, ppmm: float, note: str
 ) -> None:
     stem = "ncfai-card"
-    lines = [f"# {dpi_note}", f"mtllib {stem}.mtl", f"o {stem}"]
+    lines = [f"# {note}", f"mtllib {stem}.mtl", f"o {stem}"]
     lines += [f"v {x:.5f} {y:.5f} {z:.5f}" for x, y, z in m.verts]
     lines += [f"vt {u:.6f} {v:.6f}" for u, v in m.uv]
-    n = m.n_top
-    lines.append("usemtl front")
-    lines += [f"f {a + 1}/{a + 1} {b + 1}/{b + 1} {c + 1}/{c + 1}" for a, b, c in m.top_faces]
-    lines.append("usemtl back")
-    lines += [f"f {a + 1}/{a + 1} {b + 1}/{b + 1} {c + 1}/{c + 1}" for a, b, c in m.bottom_faces]
-    lines.append("usemtl edge")
-    lines += [f"f {a + 1} {b + 1} {c + 1}" for a, b, c in m.side_faces]
-    del n
+    for mat in ("front", "back", "edge"):
+        lines.append(f"usemtl {mat}")
+        lines += [f"f {a + 1}/{a + 1} {b + 1}/{b + 1} {c + 1}/{c + 1}" for a, b, c in m.groups[mat]]
 
     def mtl(name: str, tex: str | None) -> list[str]:
         out = [f"newmtl {name}", "Ka 1 1 1", "Kd 1 1 1", "Ks 0 0 0", "d 1", "illum 1"]
@@ -378,14 +473,35 @@ def write_obj_package(
             tmp.unlink()
 
 
+def shade_relief(front: Image.Image, raised: BaseGeometry, ppmm: float) -> Image.Image:
+    """Preview only: fake lighting from top-left so raised areas read as relief."""
+    mask = Image.new("L", front.size, 0)
+    d = ImageDraw.Draw(mask)
+    _paint(d, raised, 255, ppmm, hole=0)  # type: ignore[arg-type]
+    h = np.asarray(mask.filter(ImageFilter.GaussianBlur(0.12 * ppmm)), dtype=float) / 255
+    gy, gx = np.gradient(h)
+    lit = -(gx + gy)
+    lit = lit / max(np.percentile(np.abs(lit), 99.7), 1e-9)
+    k = np.clip(1.0 + 0.45 * lit, 0.55, 1.45) * (1.0 + 0.03 * h)
+    out = np.clip(np.asarray(front, dtype=float) * k[..., None], 0, 255)
+    return Image.fromarray(out.astype("uint8"))
+
+
 def write_preview(
-    path: Path, p: CardParams, front: Image.Image, back: Image.Image, bubbles: list[Bubble]
+    path: Path,
+    p: CardParams,
+    front: Image.Image,
+    back: Image.Image,
+    bubbles: list[Bubble],
+    raised: BaseGeometry,
+    ppmm: float,
 ) -> None:
     scale = 1000 / p.width  # px per mm
     w, h = round(p.width * scale), round(p.height * scale)
     outline = rounded_mask_polygon(p, bubbles)
     sheet = Image.new("RGB", (w * 2 + 90, h + 60), (214, 220, 230))
-    for k, img in enumerate((front, back)):  # back texture is already the view from behind
+    front_shaded = shade_relief(front, raised, ppmm) if p.relief > 0 else front
+    for k, img in enumerate((front_shaded, back)):  # back texture is already the view from behind
         small = img.resize((w, h), Image.LANCZOS)
         mask = Image.new("L", (w, h), 0)
         md = ImageDraw.Draw(mask)
@@ -397,36 +513,47 @@ def write_preview(
     sheet.save(path, "PNG", optimize=True)
 
 
-def write_step(path: Path, p: CardParams, bubbles: list[Bubble]) -> bool:
+def write_step(
+    path: Path, p: CardParams, bubbles: list[Bubble], raised_card: BaseGeometry | None
+) -> bool:
     try:
         import cadquery as cq
     except ImportError:
         return False
     s = (
         cq.Workplane("XY")
-        .box(p.width, p.height, p.thickness, centered=(True, True, False))
+        .box(p.width, p.height, p.base_thickness, centered=(True, True, False))
         .edges("|Z")
         .fillet(p.corner_r)
     )
     for b in bubbles:
-        cut = (
+        s = s.cut(
             cq.Workplane("XY")
             .center(b.x - p.width / 2, p.height / 2 - b.y)
             .circle(b.d / 2)
-            .extrude(p.thickness)
+            .extrude(p.base_thickness)
         )
-        s = s.cut(cut)
+    if raised_card is not None and p.relief > 0:
+        g = affinity.affine_transform(raised_card, [1, 0, 0, -1, -p.width / 2, p.height / 2])
+        for q in parts(g.simplify(0.01)):
+            wp = cq.Workplane("XY").workplane(offset=p.base_thickness)
+            wp = wp.polyline(list(q.exterior.coords)[:-1]).close()
+            for r in q.interiors:
+                wp = wp.polyline(list(r.coords)[:-1]).close()
+            s = s.union(wp.extrude(p.relief))
     cq.exporters.export(s, str(path))
     return True
 
 
 def check(
-    p: CardParams, bubbles: list[Bubble], geo: trimesh.Trimesh
+    p: CardParams, bubbles: list[Bubble], geo: trimesh.Trimesh, rel: FrontRelief
 ) -> list[tuple[str, str, bool]]:
     """(check, result, passed) - screening against supplier values, not a supplier approval."""
     web = min_ligament(p, bubbles)
     dmin = min((b.d for b in bubbles), default=math.inf)
     bb = geo.bounds[1] - geo.bounds[0]
+    n_raised = len(parts(rel.raised))
+    changed = 100 * rel.removed_area / max(rel.raised.area, 1e-9)
     rows = [
         (
             "Geometry watertight, 1 shell",
@@ -443,17 +570,28 @@ def check(
             f"{bb[0]:.2f} x {bb[1]:.2f} x {bb[2]:.2f} mm",
             abs(bb[0] - p.width) < 1e-3
             and abs(bb[1] - p.height) < 1e-3
-            and abs(bb[2] - p.thickness) < 1e-3,
+            and abs(bb[2] - p.total_thickness) < 1e-3,
         ),
         (
-            "Thickness + tol <= 2.5 mm",
-            f"{p.thickness + 0.3:.2f} mm",
-            p.thickness + 0.3 <= 2.5 + 1e-9,
+            "Base >= 2.0 mm and base+relief <= 2.5 mm (nominal)",
+            f"{p.base_thickness:.2f} + {p.relief:.2f} = {p.total_thickness:.2f} mm",
+            p.base_thickness >= 2.0 and p.total_thickness <= 2.5 + 1e-9,
         ),
         (
-            "Thickness - tol >= 2.0 mm? (informational)",
-            f"{p.thickness - 0.3:.2f} mm",
-            p.thickness - 0.3 >= 2.0,
+            "Relief depth/height vs. CN-A design rule 0.8 mm (informational)",
+            f"{p.relief:.2f} mm (MJF article: 0.5)",
+            p.relief >= 0.8,
+        ),
+        (
+            "Tolerance +-0.3 mm on 2.5 mm envelope (informational)",
+            f"base {p.base_thickness - 0.3:.1f}..{p.base_thickness + 0.3:.1f}, "
+            f"total max {p.total_thickness + 0.3:.1f} mm",
+            p.total_thickness + 0.3 <= 2.5,
+        ),
+        (
+            "Min. raised web / groove width >= 0.8 mm (opening+closing filter)",
+            f"{n_raised} raised polygons, {changed:.1f} % of area adjusted by filter",
+            changed < 15,
         ),
         (
             "Min. web (hole-hole / hole-edge) >= 2.0 mm",
@@ -476,7 +614,8 @@ def main() -> int:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--date", required=True, help="YYYY-MM-DD for the filename")
     ap.add_argument("--seed", default=None, help="unique-card seed (default from card_params)")
-    ap.add_argument("--bubbles", type=int, default=None, help="0 = flat control variant")
+    ap.add_argument("--bubbles", type=int, default=None, help="through-holes (default 0)")
+    ap.add_argument("--relief", type=float, default=None, help="0 = flat control variant (2.0 mm)")
     ap.add_argument("--part-number", default="unikat001")
     ap.add_argument(
         "--ppmm", type=float, default=40.0, help="texture pixels per mm (40 = 1016 dpi)"
@@ -488,17 +627,23 @@ def main() -> int:
         p = replace(p, seed=a.seed)
     if a.bubbles is not None:
         p = replace(p, n_bubbles=a.bubbles)
+    if a.relief is not None:
+        p = replace(p, relief=a.relief)
+    p.validate()
     bubbles = layout_bubbles(p)
     content = CardContent.load(a.content)
     logo = trim_logo(Image.open(a.logo))
+    rel = build_front_relief(
+        content.name, tuple(w for w, _ in content.badges), seed_int(p.seed), p.min_feature
+    )
 
     a.out.mkdir(parents=True, exist_ok=True)
-    part = a.part_number + ("" if bubbles else "-flat")
+    part = a.part_number + ("-flat" if p.relief == 0 else "") + ("-holes" if bubbles else "")
     stem = f"NCFAI-card_{part}_EXP_MJF_PAC-HP_{a.date}"
 
-    front = render_front(p, content, logo, bubbles, a.ppmm)
-    back = render_back(p, content, bubbles, a.ppmm)
-    mesh = build_mesh(p, bubbles)
+    front = render_front(p, content, logo, bubbles, a.ppmm, rel)
+    back = render_back(p, content, logo, bubbles, a.ppmm)
+    mesh = build_mesh(p, bubbles, rel.raised)
     geo = mesh.geometry()
 
     geo.export(a.out / f"{stem}.stl")
@@ -510,10 +655,14 @@ def main() -> int:
         a.ppmm,
         f"NCFAI card, seed tag {seed_tag(p.seed)}, units mm, texture {a.ppmm:g} px/mm",
     )
-    write_preview(a.out / f"{stem}_preview.png", p, front, back, bubbles)
-    step_ok = write_step(a.out / f"{stem}.step", p, bubbles)
+    write_preview(a.out / f"{stem}_preview.png", p, front, back, bubbles, rel.raised, a.ppmm)
+    try:
+        step_ok = write_step(a.out / f"{stem}.step", p, bubbles, rel.raised)
+    except Exception as exc:  # STEP is secondary; keep the print package
+        print(f"STEP failed: {exc!r}")
+        step_ok = False
 
-    rows = check(p, bubbles, geo)
+    rows = check(p, bubbles, geo, rel)
     if content.url:
         qr = make_layout(content.url, p.width - QR_RIGHT, QR_TOP, a.ppmm)
         rows.append(
@@ -527,13 +676,13 @@ def main() -> int:
         rows += [(f"QR decodes: {n}", "ok" if ok else "no", ok) for n, ok in vq]
         if not vq:
             print("QR decode test: skipped (zxing-cpp not installed)")
-    print(f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)}")
-    for b in bubbles:
-        print(f"  bubble x={b.x:6.2f} y={b.y:6.2f} d={b.d:.1f}")
+    print(
+        f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)} bracts={len(rel.cone.tiles)}"
+    )
     for name, res, ok in rows:
         info = "informational" in name
         print(f"[{'PASS' if ok else ('INFO' if info else 'FAIL')}] {name}: {res}")
-    print(f"STEP: {'written' if step_ok else 'skipped (cadquery not installed)'}")
+    print(f"STEP: {'written' if step_ok else 'skipped/failed'}")
     print(f"files: {a.out}/{stem}*")
     return 0 if all(ok for n, _, ok in rows if "informational" not in n) else 1
 
