@@ -68,30 +68,29 @@ def test_qr_layout_geometry() -> None:
     assert abs((q.x - x0) - QUIET_MODULES * q.module_mm) < 1e-9 and x1 > q.x + q.size
 
 
-def test_relief_mesh_is_single_watertight_shell_with_engraved_badge() -> None:
+def test_relief_mesh_is_single_watertight_shell_with_engraved_bar() -> None:
     for mod in ("shapely", "trimesh", "fontTools", "mapbox_earcut", "PIL"):
         pytest.importorskip(mod)
     from card_relief import build_front_relief, parts
     from ncfai_card import build_mesh
 
     p = CardParams()
-    rel = build_front_relief("Ada Lee", ("EXAMPLE", "WORD"), 7, p.min_feature)
-    assert rel.raised.area > 100 and len(rel.cone.tiles) > 8
+    rel = build_front_relief("Ada Lee", "AI \u00b7 ROBOTICS \u00b7 BEER", p.min_feature)
+    assert rel.raised.area > 200 and rel.bar_font_mm >= 5.4
     geo = build_mesh(p, [], rel.raised).geometry()
     assert geo.is_watertight and len(geo.split()) == 1
     assert abs(geo.bounds[1][2] - p.total_thickness) < 1e-9
-    # engraved letters leave holes in the raised badge polygons
-    assert any(len(q.interiors) > 0 for q in parts(rel.badges))
+    # engraved letters = holes in the raised bar polygon
+    assert any(len(q.interiors) > 0 for q in parts(rel.bar))
     # flat control variant: plain 2.0 mm plate
     flat = build_mesh(replace(p, relief=0.0), [], None).geometry()
     assert flat.is_watertight and abs(flat.bounds[1][2] - 2.0) < 1e-9
 
 
-def test_relief_is_seed_dependent() -> None:
+def test_overlong_tagline_is_rejected() -> None:
     pytest.importorskip("shapely")
     pytest.importorskip("fontTools")
     from card_relief import build_front_relief
 
-    a = build_front_relief("A B", ("X",), 1, 0.8).cone.tiles
-    b = build_front_relief("A B", ("X",), 2, 0.8).cone.tiles
-    assert [t.wkt for t, _ in a] != [t.wkt for t, _ in b]
+    with pytest.raises(ValueError):
+        build_front_relief("A B", "AI \u00b7 ROBOTICS \u00b7 SENSORY \u00b7 BEER", 0.8)

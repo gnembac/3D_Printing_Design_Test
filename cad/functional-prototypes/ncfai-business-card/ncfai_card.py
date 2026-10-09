@@ -41,16 +41,10 @@ from card_params import (  # noqa: E402
     CardParams,
     layout_bubbles,
     min_ligament,
-    seed_int,
     seed_tag,
 )
 from card_qr import QrLayout, make_layout  # noqa: E402
-from card_relief import (  # noqa: E402
-    FrontRelief,
-    badge_layout,
-    build_front_relief,
-    parts,
-)
+from card_relief import FrontRelief, build_front_relief, chip_icon, parts, robot_head  # noqa: E402
 
 # Colours sampled from the NCFAI logo (`estimated`, sRGB; process colour will differ)
 ORANGE = (253, 138, 36)
@@ -79,8 +73,7 @@ class CardContent:
     qualification: str
     address: tuple[str, ...]
     url: str = ""
-    badges: tuple[tuple[str, str], ...] = ()  # (engraved word, caption below)
-    tagline: str = ""
+    tagline: str = ""  # engraved into the raised bar (upper case, max. ~20 characters)
 
     @staticmethod
     def load(path: Path) -> CardContent:
@@ -91,7 +84,6 @@ class CardContent:
             d["qualification"],
             tuple(d["address"]),
             d.get("url", ""),
-            tuple((w, cap) for w, cap in d.get("badges", [])),
             d.get("tagline", ""),
         )
 
@@ -170,11 +162,11 @@ def _paint(
 def _paint_gradient(
     img: Image.Image,
     geom: BaseGeometry,
-    stops: tuple[tuple[int, int, int], tuple[int, int, int]],
+    stops: list[tuple[int, int, int]],
     ppmm: float,
     vertical: bool = False,
 ) -> None:
-    """Fill geometry with a two-colour gradient across its bounding box (holes stay untouched)."""
+    """Fill geometry with an n-colour gradient across its bounding box (holes stay untouched)."""
     mask = Image.new("L", img.size, 0)
     md = ImageDraw.Draw(mask)
     for poly in sorted(parts(geom), key=lambda q: -q.area):
@@ -183,15 +175,28 @@ def _paint_gradient(
             md.polygon([(x * ppmm, y * ppmm) for x, y in ring.coords], fill=0)
     x0, y0, x1, y1 = geom.bounds
     w, h = img.size
-    ramp = np.linspace(0, 1, w)[None, :].repeat(h, 0)
     if vertical:
-        ramp = np.linspace(0, 1, h)[:, None].repeat(w, 1)
-        t = np.clip((ramp * h / ppmm - y0) / max(y1 - y0, 1e-9), 0, 1)
+        t = np.clip(((np.arange(h) + 0.5) / ppmm - y0) / max(y1 - y0, 1e-9), 0, 1)[:, None]
     else:
-        t = np.clip((ramp * w / ppmm - x0) / max(x1 - x0, 1e-9), 0, 1)
-    a, b = np.array(stops[0], float), np.array(stops[1], float)
-    grad = Image.fromarray((a + (b - a) * t[..., None]).astype("uint8"))
-    img.paste(grad, mask=mask)
+        t = np.clip(((np.arange(w) + 0.5) / ppmm - x0) / max(x1 - x0, 1e-9), 0, 1)[None, :]
+    t = np.broadcast_to(t, (h, w))
+    pos = np.linspace(0, 1, len(stops))
+    cols = np.array(stops, float)
+    grad = np.stack([np.interp(t, pos, cols[:, k]) for k in range(3)], axis=-1)
+    img.paste(Image.fromarray(grad.astype("uint8")), mask=mask)
+
+
+def _draw_qualification(
+    d: ImageDraw.ImageDraw, text: str, x: float, y: float, size: float, ppmm: float
+) -> None:
+    """One line; UPPER-CASE words (institutions) in blue, the rest navy."""
+    f = font(size, ppmm)
+    space = d.textlength(" ", font=f)
+    cx = x * ppmm
+    for word in text.split(" "):
+        inst = len(word) >= 4 and word.isalpha() and word.isupper()
+        d.text((cx, y * ppmm), word, font=f, fill=BLUE if inst else NAVY)
+        cx += d.textlength(word, font=f) + space
 
 
 def render_front(
@@ -204,41 +209,22 @@ def render_front(
 ) -> Image.Image:
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
     d = ImageDraw.Draw(img)
-    # logo, top-left, width 31 mm
+    # logo, top-left, width 31 mm (flat colour)
     lw = 31.0
     lh = lw * logo.height / logo.width
-    big = logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS)
-    img.paste(big, (_px(5.0, ppmm), _px(5.0, ppmm)))
-    # gradient rule (flat colour, base level)
-    y0, y1 = _px(22.9, ppmm), _px(22.9 + 0.6, ppmm)
-    for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
-        d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
-    # flat (printed, no relief) small text: strokes too thin for 0.8 mm relief
-    d.text((_px(5.0, ppmm), _px(24.5, ppmm)), c.company, font=font(2.9, ppmm), fill=NAVY)
-    if c.tagline:
-        d.text((_px(5.0, ppmm), _px(27.9, ppmm)), c.tagline, font=font(2.6, ppmm), fill=PURPLE)
-    f3 = font(2.6, ppmm)
-    if c.badges:
-        for (_, cap), (x0, _) in zip(
-            c.badges, badge_layout(tuple(w for w, _ in c.badges)), strict=True
-        ):
-            d.text((_px(x0 + 1.0, ppmm), _px(39.7, ppmm)), cap, font=f3, fill=NAVY)
-    else:
-        d.text((_px(5.0, ppmm), _px(31.2, ppmm)), c.qualification, font=f3, fill=NAVY)
-    for i, line in enumerate(c.address):
-        d.text((_px(5.0, ppmm), _px(43.4 + 3.2 * i, ppmm)), line, font=f3, fill=NAVY)
-    # hop cone: groove floor (base level) dark green, bracts (raised) lighter green
-    _paint(d, relief.cone.silhouette, GREEN_FLOOR, ppmm)
-    for tile, t in relief.cone.tiles:
-        _paint(d, tile, lerp(GREEN_TOP, GREEN_BOT, t), ppmm)
-    _paint(d, relief.cone.stalk, lerp(GREEN_TOP, GREEN_BOT, 0.3), ppmm)
-    # raised name, badges (logo gradients; engraved letters = white base plane), icons
+    img.paste(
+        logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS),
+        (_px(5.0, ppmm), _px(5.0, ppmm)),
+    )
+    # raised name (navy) and raised bar with engraved tagline (letters = white base plane)
     _paint(d, relief.name, NAVY, ppmm)
-    stops = ((ORANGE, PURPLE), (PURPLE, BLUE))
-    for i, g in enumerate(relief.badge_list):
-        _paint_gradient(img, g, stops[i % 2], ppmm)
-    _paint_gradient(img, relief.robot, (BLUE, PURPLE), ppmm, vertical=True)
-    _paint_gradient(img, relief.chip, (ORANGE, PURPLE), ppmm, vertical=True)
+    _paint_gradient(img, relief.bar, [ORANGE, PURPLE, BLUE], ppmm)
+    # flat (printed, no relief) text: strokes too thin for 0.8 mm relief
+    d.text((_px(5.0, ppmm), _px(34.0, ppmm)), c.company, font=font(3.3, ppmm), fill=NAVY)
+    _draw_qualification(d, c.qualification, 5.0, 38.0, 3.3, ppmm)
+    f3 = font(2.8, ppmm)
+    for i, line in enumerate(c.address):
+        d.text((_px(5.0, ppmm), _px(43.2 + 3.3 * i, ppmm)), line, font=f3, fill=NAVY)
     _draw_rings(d, bubbles, p, ppmm, mirror=False)
     return img
 
@@ -248,7 +234,8 @@ def render_back(
 ) -> Image.Image:
     """Back face as seen from behind (not mirrored: this is the picture the viewer sees).
 
-    Left half: NCFAI logo centred. Right half: large QR code (c.url) + URL in plain text.
+    Left half: NCFAI logo centred, robot-head icon above, microchip icon below (flat colour).
+    Right half: large QR code (c.url) + URL in plain text.
     No text/ink elsewhere (ink coverage low, maximum QR contrast).
     """
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
@@ -262,6 +249,12 @@ def render_back(
         logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS),
         (_px(cx - lw / 2, ppmm), _px(p.height / 2 - lh / 2, ppmm)),
     )
+    # flat printed icons (no relief on the back: 2.0 + 0.5 mm envelope is used by the front)
+    k = 1.45
+    robot = affinity.translate(affinity.scale(robot_head(0.0, 0.0), k, k, origin=(0, 0)), cx, 5.0)
+    chip = affinity.translate(affinity.scale(chip_icon(0.0, 0.0), k, k, origin=(0, 0)), cx, 38.9)
+    _paint_gradient(img, robot, [BLUE, PURPLE], ppmm, vertical=True)
+    _paint_gradient(img, chip, [ORANGE, PURPLE], ppmm, vertical=True)
     _draw_rings(d, bubbles, p, ppmm, mirror=True)
     if qr is not None:
         m = qr.module_mm
@@ -627,9 +620,7 @@ def main() -> int:
     bubbles = layout_bubbles(p)
     content = CardContent.load(a.content)
     logo = trim_logo(Image.open(a.logo))
-    rel = build_front_relief(
-        content.name, tuple(w for w, _ in content.badges), seed_int(p.seed), p.min_feature
-    )
+    rel = build_front_relief(content.name, content.tagline, p.min_feature)
 
     a.out.mkdir(parents=True, exist_ok=True)
     part = a.part_number + ("-flat" if p.relief == 0 else "") + ("-holes" if bubbles else "")
@@ -671,7 +662,8 @@ def main() -> int:
         if not vq:
             print("QR decode test: skipped (zxing-cpp not installed)")
     print(
-        f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)} bracts={len(rel.cone.tiles)}"
+        f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)} "
+        f"bar font {rel.bar_font_mm:.2f} mm"
     )
     for name, res, ok in rows:
         info = "informational" in name

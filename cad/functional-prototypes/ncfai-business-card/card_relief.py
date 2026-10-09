@@ -1,4 +1,4 @@
-"""Vector relief design of the card front: raised name, badges with engraved lettering, hop cone.
+"""Vector relief design of the card front: raised name and a raised bar with ENGRAVED lettering.
 
 Everything is built as shapely geometry in CARD coordinates (mm, origin top-left, y down).
 Two height levels only: base plane (z = base_thickness) and raised plane (+relief).
@@ -10,8 +10,6 @@ The same geometry drives the 3D mesh and the colour texture -> perfect registrat
 
 from __future__ import annotations
 
-import math
-import random
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -19,7 +17,7 @@ from pathlib import Path
 from fontTools.pens.basePen import BasePen
 from fontTools.ttLib import TTFont
 from shapely import affinity
-from shapely.geometry import LineString, Point, Polygon, box
+from shapely.geometry import Point, Polygon, box
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
@@ -28,11 +26,6 @@ FONT_FILES = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "C:/Windows/Fonts/arialbd.ttf",
 )
-
-# Hop cone placement (card coordinates, mm)
-CONE_CX, CONE_TOP, CONE_TIP, CONE_W = 71.2, 29.6, 51.6, 16.4
-ICON_CX = 77.0  # robot head / chip icon column (top right)
-GROOVE = 0.85  # groove between bracts (>= 0.8 mm supplier minimum, conservative value)
 
 
 def parts(geom: BaseGeometry) -> list[Polygon]:
@@ -136,25 +129,21 @@ def text_geometry(
     return unary_union(out)
 
 
-BADGE_SIZE, BADGE_PAD, BADGE_H, BADGE_Y, BADGE_GAP, BADGE_TRACK = 5.2, 2.3, 8.2, 31.0, 2.4, 0.35
+def tagline_bar(text: str, x0: float, y0: float, w: float, h: float) -> tuple[BaseGeometry, float]:
+    """Raised rounded bar with `text` ENGRAVED into it (down to the base plane).
 
-
-def badge(word: str, x0: float, shape: str) -> tuple[BaseGeometry, float]:
-    """Raised badge with the word ENGRAVED into it (down to the base plane).
-
-    shape: "capsule" (institution) or "chamfer" (judge seal, bevelled corners). Returns (geom, w).
+    The letter size is chosen as large as fits (max 5.8 mm); below 5.4 mm the bold strokes
+    get thinner than the 0.8 mm minimum groove width -> ValueError.
+    Returns (geometry, font size in mm).
     """
-    h, y0 = BADGE_H, BADGE_Y
-    w = text_width(word, BADGE_SIZE, BADGE_TRACK) + 2 * BADGE_PAD
-    if shape == "capsule":
-        r = h / 2
-        body: BaseGeometry = box(x0 + r, y0 + r, x0 + w - r, y0 + h - r).buffer(r, quad_segs=24)
-    else:
-        c = 2.2
-        body = box(x0 + c, y0 + c, x0 + w - c, y0 + h - c).buffer(c, join_style=3, mitre_limit=1.0)
-    base_y = y0 + h / 2 + cap_height(BADGE_SIZE) / 2
-    letters = text_geometry(word, BADGE_SIZE, x0 + w / 2, base_y, anchor="c", tracking=BADGE_TRACK)
-    return body.difference(letters), w
+    pad, track = 3.5, 0.45
+    size = min(5.8, (w - 2 * pad - track * (len(text) - 1)) / text_width(text, 1.0))
+    if size < 5.4:
+        raise ValueError(f"tagline '{text}' too long for the bar (letter size {size:.1f} < 5.4 mm)")
+    body = box(x0 + 2.0, y0 + 2.0, x0 + w - 2.0, y0 + h - 2.0).buffer(2.0, quad_segs=16)
+    baseline = y0 + h / 2 + cap_height(size) / 2
+    letters = text_geometry(text, size, x0 + w / 2, baseline, anchor="c", tracking=track)
+    return body.difference(letters), size
 
 
 def robot_head(cx: float, top: float) -> BaseGeometry:
@@ -195,77 +184,6 @@ def chip_icon(cx: float, top: float) -> BaseGeometry:
     return unary_union([body, *pins]).difference(ring)
 
 
-@dataclass(frozen=True)
-class HopCone:
-    silhouette: Polygon  # base-level floor (printed dark green)
-    tiles: tuple[tuple[Polygon, float], ...]  # raised bracts with colour parameter t 0 (top)..1
-    stalk: Polygon
-
-
-def _half_width(s: float) -> float:
-    return (CONE_W / 2) * max(0.0, math.sin(math.pi * s**0.7)) ** 0.8
-
-
-def hop_cone(seed: int, gap: float = GROOVE, min_feature: float = 0.8) -> HopCone:
-    """Female hop cone, tip down: overlapping bracts as raised tiles separated by grooves.
-
-    Seed jitter (bract position/size/splay, bend, stalk) makes every card's cone unique.
-    """
-    rng = random.Random(seed ^ 0x9E3779B9)
-    bend = rng.uniform(-0.9, 0.9)
-    h = CONE_TIP - CONE_TOP
-
-    def cx_at(s: float) -> float:
-        return CONE_CX + bend * math.sin(math.pi * s)
-
-    pts_l, pts_r = [], []
-    for i in range(121):
-        s = i / 120
-        y, w, c = CONE_TOP + s * h, _half_width(s), cx_at(s)
-        pts_l.append((c - w, y))
-        pts_r.append((c + w, y))
-    sil = Polygon(pts_l + pts_r[::-1]).buffer(0)
-
-    tiles: list[tuple[Polygon, float]] = []
-    placed: list[BaseGeometry] = []
-    dy = 3.0
-    k = 0
-    y = CONE_TOP + 1.5
-    while y < CONE_TIP - 1.0:
-        s = (y - CONE_TOP) / h
-        w = _half_width(s)
-        n = max(1, round(2 * w / 4.9))
-        pitch = 2 * w / n
-        shift = (0.25 if k % 2 else -0.25) * pitch if n > 1 else 0.0
-        for i in range(n):
-            x = cx_at(s) + (i - (n - 1) / 2) * pitch + shift + rng.uniform(-0.25, 0.25)
-            yy = y + rng.uniform(-0.2, 0.2)
-            rx = pitch * rng.uniform(0.58, 0.66)
-            ry = dy * rng.uniform(0.85, 0.98)
-            ell = affinity.scale(Point(0, 0).buffer(1.0, quad_segs=24), rx, ry)
-            ell = affinity.rotate(ell, (x - cx_at(s)) / max(w, 1.0) * 14 + rng.uniform(-4, 4))
-            tile = affinity.translate(ell, x, yy).intersection(sil)
-            if placed:
-                tile = tile.difference(unary_union(placed).buffer(gap, quad_segs=8))
-            tile = max(parts(tile), key=lambda q: q.area, default=Polygon())
-            if tile.is_empty:
-                continue
-            r = min_feature / 2 - 0.01  # opening: removes slivers narrower than min_feature
-            tile = tile.buffer(-r, quad_segs=8).buffer(r, quad_segs=8)
-            if tile.is_empty or tile.area < 1.2:
-                continue
-            tile = max(parts(tile), key=lambda q: q.area)
-            tiles.append((tile, min(1.0, max(0.0, s + rng.uniform(-0.06, 0.06)))))
-            placed.append(tile)
-        y += dy
-        k += 1
-    sx = CONE_CX + rng.uniform(0.8, 2.2)
-    stalk = LineString(
-        [(CONE_CX, CONE_TOP + 0.8), (CONE_CX + 0.2, CONE_TOP - 1.8), (sx, CONE_TOP - 3.2)]
-    ).buffer(0.75, quad_segs=8)
-    return HopCone(sil, tuple(tiles), stalk)
-
-
 def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
     """Opening then closing with radius ~w/2: no raised web and no groove narrower than w."""
     r = w / 2 - 0.01
@@ -273,61 +191,28 @@ def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
     return g.buffer(r, quad_segs=8).buffer(-r, quad_segs=8)
 
 
+BAR_X, BAR_Y, BAR_W, BAR_H = 5.0, 23.4, 75.0, 8.6
+NAME_SIZE = 8.4
+
+
 @dataclass(frozen=True)
 class FrontRelief:
-    name: BaseGeometry
-    badges: BaseGeometry  # union of all badges
-    badge_list: tuple[BaseGeometry, ...]
-    robot: BaseGeometry
-    chip: BaseGeometry
-    cone: HopCone
+    name: BaseGeometry  # raised
+    bar: BaseGeometry  # raised bar, tagline engraved
+    bar_font_mm: float
     raised: BaseGeometry  # union, after minimum-feature enforcement
     removed_area: float  # mm2 changed by enforce_min_feature (should be small)
 
 
-BADGE_SHAPES = ("capsule", "chamfer")
-
-
-def badge_layout(badge_words: tuple[str, ...]) -> list[tuple[float, float]]:
-    """(x0, width) of every badge, left-aligned from x = 5 mm."""
-    out, x = [], 5.0
-    for word in badge_words:
-        w = text_width(word, BADGE_SIZE, BADGE_TRACK) + 2 * BADGE_PAD
-        out.append((x, w))
-        x += w + BADGE_GAP
-    return out
-
-
-def build_front_relief(
-    name: str,
-    badge_words: tuple[str, ...],
-    seed: int,
-    min_feature: float,
-) -> FrontRelief:
+def build_front_relief(name: str, tagline: str, min_feature: float) -> FrontRelief:
     first, _, last = name.partition(" ")
     name_geom = unary_union(
         [
-            text_geometry(first, 6.8, 41.0, 10.9),
-            text_geometry(last, 6.8, 41.0, 19.0),
+            text_geometry(first, NAME_SIZE, 41.0, 11.4),
+            text_geometry(last, NAME_SIZE, 41.0, 20.6),
         ]
     )
-    badge_list = tuple(
-        badge(word, x, BADGE_SHAPES[i % len(BADGE_SHAPES)])[0]
-        for i, (word, (x, _)) in enumerate(zip(badge_words, badge_layout(badge_words), strict=True))
-    )
-    badges = unary_union(badge_list) if badge_list else Polygon()
-    robot = robot_head(ICON_CX, 4.6)
-    chip = chip_icon(ICON_CX, 13.6)
-    cone = hop_cone(seed, min_feature=min_feature)
-    raw = unary_union([name_geom, badges, robot, chip, cone.stalk, *[t for t, _ in cone.tiles]])
+    bar, size = tagline_bar(tagline, BAR_X, BAR_Y, BAR_W, BAR_H)
+    raw = unary_union([name_geom, bar])
     raised = enforce_min_feature(raw, min_feature)
-    return FrontRelief(
-        name_geom,
-        badges,
-        badge_list,
-        robot,
-        chip,
-        cone,
-        raised,
-        raw.symmetric_difference(raised).area,
-    )
+    return FrontRelief(name_geom, bar, size, raised, raw.symmetric_difference(raised).area)

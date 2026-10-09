@@ -2,7 +2,7 @@
 
 ```text
 Exercise-ID: EX-001
-Learning objective: Verzug einer 85 × 55 mm MJF-Platte mit einseitigem 0,5-mm-Relief (2,0 + 0,5 mm) gegen eine ebene 2,0-mm-Kontrollplatte quantifizieren; Detailtreue (Rillen 0,85 mm, Gravur 0,5 mm tief) und QR-Lesbarkeit beurteilen
+Learning objective: Verzug einer 85 × 55 mm MJF-Platte mit einseitigem 0,5-mm-Relief (2,0 + 0,5 mm) gegen eine ebene 2,0-mm-Kontrollplatte quantifizieren; Detailtreue (Gravur der Leiste 0,5 mm tief, Buchstabenstege ≥ 0,8 mm) und QR-Lesbarkeit beurteilen
 Prerequisite skills: Messen mit Fühlerlehre auf Planplatte, Messschieber, Messprotokoll
 Setup (printer, material, settings): Supplier CN-A, MJF, PAC-HP, Ausrichtung/Parameter durch Dienstleister (zu erfragen, k.A.)
 What was tried: (offen) Variante A `unikat001` (Relief), Variante B `unikat001-flat` (--relief 0); je Karte 4 Ecken + Mitte vermessen, Rillenbreite/Gravurtiefe an 3 Stellen, QR mit 3 Handys scannen

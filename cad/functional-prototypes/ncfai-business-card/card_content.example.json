@@ -8,15 +8,5 @@
     "Germany / Bavaria / Frankonia"
   ],
   "url": "https://example.com/",
-  "badges": [
-    [
-      "EXAMPLE",
-      "Example Title"
-    ],
-    [
-      "WORD",
-      "Example Judge"
-    ]
-  ],
-  "tagline": "Example · Tagline · Here"
+  "tagline": "EXAMPLE · WORDS"
 }
