@@ -35,3 +35,6 @@ Thumbs.db
 # Local, non-reproducible scratch output
 /tmp/
 *.log
+
+# Personalised print data (names/addresses) - never commit
+private/
