@@ -1,4 +1,4 @@
-"""Parameters and validation for EX-001 (print-in-place pin hinge, clearance series).
+"""Parameters and validation for EX-002 (print-in-place pin hinge, clearance series).
 
 No CAD dependency. All lengths in millimetres.
 

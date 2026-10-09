@@ -1,7 +1,7 @@
 """CadQuery model of the NCRAI robot card, variant A (nested panel, film hinge).
 
 Printed in the open pose: plate flat on z = 0 (top face z = t), web relaxed at relax_deg,
-robot panel standing on the web. See card_params.py for the concept and the rule deviations.
+robot panel standing on the web. See ncrai_card_params.py for the concept and the rule deviations.
 
 Usage (needs cadquery):
     python robot_card.py --out <dir> --date 2026-10-09
@@ -19,7 +19,7 @@ from pathlib import Path
 import cadquery as cq
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from card_params import SILHOUETTE, CardParams  # noqa: E402
+from ncrai_card_params import SILHOUETTE, CardParams  # noqa: E402
 
 NAME = "NCRAI-card_variant-A_EXP_MJF_PAC-HP"
 

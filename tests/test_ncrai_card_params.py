@@ -10,7 +10,7 @@ CARD_DIR = (
 )
 sys.path.insert(0, str(CARD_DIR))
 
-from card_params import SILHOUETTE, CardParams  # noqa: E402
+from ncrai_card_params import SILHOUETTE, CardParams  # noqa: E402
 
 
 def test_defaults_valid() -> None:

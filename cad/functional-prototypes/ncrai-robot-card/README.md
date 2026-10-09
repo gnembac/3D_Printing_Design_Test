@@ -53,7 +53,7 @@ Rückstellung: Der Steg federt das Paneel beim Loslassen wieder auf. Ein Halteel
 | A7 | Dehnungsgrenze des Filmscharniers 5 % angenommen, Werkstoffdaten PAC-HP **k.A.** | `ASSUMPTION` |
 | A8 | Dichte, Masse, Ermüdungsfestigkeit des Scharniers | **k.A.** |
 
-## 4 Parameter (`card_params.py`)
+## 4 Parameter (`ncrai_card_params.py`)
 
 | Parameter | Wert | Einheit | Quelle / Status |
 |---|---|---|---|
@@ -141,7 +141,7 @@ Farbraum und Wiedergabe des Verlaufs im Vollfarb-MJF-Druck sind **k.A.** und wer
 
 | Datei | Zweck |
 |---|---|
-| `card_params.py` | Parameter, Validierung, Regelabgleich |
+| `ncrai_card_params.py` | Parameter, Validierung, Regelabgleich |
 | `robot_card.py` | CadQuery-Quelle: Plate + Fenster, Filmscharnier (Bogen), Paneel |
 | `qr_logo.py` | QR-Code mit Logo |
 | `card_colour.py` | Texturatlas, UVs, 3MF, Software-Rendering zur Prüfung |

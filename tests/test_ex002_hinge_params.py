@@ -8,7 +8,7 @@ COUPON_DIR = (
     Path(__file__).resolve().parent.parent
     / "cad"
     / "test-specimens"
-    / "ex001-hinge-clearance-coupon"
+    / "ex002-hinge-clearance-coupon"
 )
 sys.path.insert(0, str(COUPON_DIR))
 

@@ -1,9 +1,9 @@
-# EX-001 – Print-in-Place-Scharnier: Spielreihe
+# EX-002 – Print-in-Place-Scharnier: Spielreihe
 
 **Stand:** 2026-10-09 · **Revision:** EXP (experimentell) · **Status:** draft (noch nicht gedruckt)
 
 ```text
-Exercise-ID:            EX-001-hinge-clearance-coupon
+Exercise-ID:            EX-002-hinge-clearance-coupon
 Date:                   2026-10-09 (Entwurf); Druckdatum k.A.
 Operator:               k.A.
 Printer:                k.A. (eigener FDM-Drucker, Modell/Düse vor dem Druck eintragen)
@@ -16,7 +16,7 @@ Setup (printer, material, settings): siehe Abschnitt "Protokoll"
 What was tried:         k.A. (noch nicht gedruckt)
 Result (measured, with units): k.A.
 Takeaway / design rule learned: k.A.
-Follow-up exercise or experiment: EX-002 QR-Modulgröße/Reliefkontrast; DOE-001 Scharnierspiel auf MJF PAC-HP
+Follow-up exercise or experiment: EX-003 QR-Modulgröße/Reliefkontrast; DOE-001 Scharnierspiel auf MJF PAC-HP
 Status:                 draft
 ```
 
@@ -41,13 +41,13 @@ beantworten.
 
 ## Protokoll
 
-1. Coupon `EX001_hinge-clearance-coupon_EXP_FDM_PLA_2026-10-09.stl` (oder `.step`) aus `exports/` laden.
+1. Coupon `EX002_hinge-clearance-coupon_EXP_FDM_PLA_2026-10-09.stl` (oder `.step`) aus `exports/` laden.
    Material nach Datenblatt trocknen/lagern und im Material-Record erfassen.
 2. Druckparameter vollständig protokollieren (Düse, Schichthöhe, Temperaturen, Geschwindigkeit,
    Kühlung, Wände, Infill, Stützen **aus**, Brim). Keine Schrumpfkompensation.
 3. Erst nach vollständigem Abkühlen bewegen. Scharniere 10× öffnen/schließen, Klasse notieren.
 4. Spalte nach obiger Tabelle messen; Messgerät und Kalibrierstatus eintragen (`quality/calibration/`).
-5. Rohdaten unverändert nach `data/raw/EX-001_<datum>.csv`, Auswertung nach `data/processed/`.
+5. Rohdaten unverändert nach `data/raw/EX-002_<datum>.csv`, Auswertung nach `data/processed/`.
 6. Bei Widerspruch zwischen Sollspalt und Messwert: Messwert zählt, Sollwert nicht korrigieren.
 
 ## Grenzen der Aussage
@@ -61,12 +61,12 @@ beantworten.
 
 | Datei | Zweck |
 |---|---|
-| `cad/test-specimens/ex001-hinge-clearance-coupon/hinge_params.py` | Parameter, Validierung, MJF-Regelabgleich |
-| `cad/test-specimens/ex001-hinge-clearance-coupon/hinge_coupon.py` | CadQuery-Quelle (STEP + binäre STL) |
-| `exports/step/EX001_hinge-clearance-coupon_EXP_FDM_PLA_2026-10-09.step` | abgeleitet |
-| `exports/stl/EX001_hinge-clearance-coupon_EXP_FDM_PLA_2026-10-09.stl` | abgeleitet |
-| `tests/test_ex001_hinge_params.py` | Tests der Parameter |
+| `cad/test-specimens/ex002-hinge-clearance-coupon/hinge_params.py` | Parameter, Validierung, MJF-Regelabgleich |
+| `cad/test-specimens/ex002-hinge-clearance-coupon/hinge_coupon.py` | CadQuery-Quelle (STEP + binäre STL) |
+| `exports/step/EX002_hinge-clearance-coupon_EXP_FDM_PLA_2026-10-09.step` | abgeleitet |
+| `exports/stl/EX002_hinge-clearance-coupon_EXP_FDM_PLA_2026-10-09.stl` | abgeleitet |
+| `tests/test_ex002_hinge_params.py` | Tests der Parameter |
 
 Geometrieprüfung (2026-10-09, CadQuery 2.8.0 / trimesh): alle 12 Körper gültig, Überlappung A/B = 0 mm³,
 minimaler Abstand A–B = Sollspalt (0,30 … 1,00 mm), STL wasserdicht. Plattenmaße 100 × 68 × 9,5 mm.
-Neu erzeugen: `python cad/test-specimens/ex001-hinge-clearance-coupon/hinge_coupon.py --out exports/tmp --date <datum>`.
+Neu erzeugen: `python cad/test-specimens/ex002-hinge-clearance-coupon/hinge_coupon.py --out exports/tmp --date <datum>`.

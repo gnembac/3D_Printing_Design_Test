@@ -29,7 +29,7 @@ from PIL import Image, ImageDraw, ImageOps
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import qr_logo  # noqa: E402
-from card_params import CardParams  # noqa: E402
+from ncrai_card_params import CardParams  # noqa: E402
 
 PX = 20  # texture pixels per mm
 # ASSUMPTION: first-sample colours from the logo (measured, estimated); adjust after the sample

@@ -1,11 +1,11 @@
-"""EX-001 coupon: six print-in-place pin hinges with different clearances (CadQuery).
+"""EX-002 coupon: six print-in-place pin hinges with different clearances (CadQuery).
 
 Axis along Y, leaves flat on the build plate (z = 0), pin integral with leaf A.
 Hinge n carries n dots on leaf A (ID 1..6, clearance order see hinge_params.DEFAULT_CLEARANCES).
 
 Usage (needs cadquery):
     python hinge_coupon.py --out <dir> --date 2026-10-09 [--process FDM --material PLA]
-Writes EX001_hinge-clearance-coupon_EXP_<process>_<material>_<date>.step / .stl
+Writes EX002_hinge-clearance-coupon_EXP_<process>_<material>_<date>.step / .stl
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ def main() -> int:
     ap.add_argument("--material", default="PLA")
     ns = ap.parse_args()
     compound = cq.Compound.makeCompound([o for o in build_coupon().vals()])
-    stem = f"EX001_hinge-clearance-coupon_EXP_{ns.process}_{ns.material}_{ns.date}"
+    stem = f"EX002_hinge-clearance-coupon_EXP_{ns.process}_{ns.material}_{ns.date}"
     ns.out.mkdir(parents=True, exist_ok=True)
     cq.exporters.export(cq.Workplane(obj=compound), str(ns.out / f"{stem}.step"))
     cq.exporters.export(cq.Workplane(obj=compound), str(ns.out / f"{stem}.stl"))
