@@ -1,6 +1,6 @@
 # NCFAI-Visitenkarte – 3D-gedrucktes Unikat (EXP)
 
-**Stand:** 2026-10-09 (Rev. 6: Markenfarben-Text, ohne Banner) · **Revision:** EXP (nicht freigegeben)
+**Stand:** 2026-10-09 (Rev. 7: NCFAI-Siegel graviert, Markenfarben-Text) · **Revision:** EXP (nicht freigegeben)
 **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A (Herstellerdaten, Anhaltswerte)
 
 ## 1 Anforderungen → Umsetzung (Rev. 5)
@@ -9,7 +9,7 @@
 |---|---|
 | 85 × 55 mm | exakt 85 × 55 mm, Ecken R4, ein Körper (eine Schale) |
 | Dicke max. 2,5 mm | **Grundplatte 2,0 mm** (= Wandminimum PAC-HP) **+ 0,5 mm Relief (nur Vorderseite) = 2,5 mm** nominal |
-| Schrift erhaben **und** vertieft | *Erhaben:* Name „Gunter / Nembach“ (8,4 mm, Strich ≈ 1,3 mm). *Vertieft:* aktuell **nichts** – die graviert beschriftete Leiste wurde auf Wunsch entfernt (Wiederaufnahme möglich, siehe Git-Historie Rev. 4/5) |
+| Schrift erhaben **und** vertieft | *Erhaben:* Name „Gunter / Nembach“ (8,4 mm, Strich ≈ 1,3 mm). *Vertieft:* kleine erhabene Platte rechts unten (23 × 9 mm, gleiche Ausrichtung wie die Adresse) mit **eingraviertem „NCFAI“** (5,6 mm fett, Strich ≈ 0,9 mm, Gravur bis auf die Grundplatte) |
 | DOEMENS / BJCP | zwei flach gedruckte Textzeilen in den **Markenfarben** (aus den Logos abgegriffen, `estimated`): „**DOEMENS** BIERSOMMELIER“ (Grün #A5CC54 / Blau #004489, Schreibweise wie im Doemens-Logo) und „**BJCP** Beer Judge“ (Blau #1A4561), je mit feinem Akzentstrich (Grün bzw. BJCP-Bernstein #E7A33D, 0,5 mm). Kein Banner, keine Badges. Kontrast Grün auf Weiß ≈ 1,8 : 1 (`estimated`) → Wort groß (4,2 mm fett), Titel im dunklen Blau |
 | Banner „AI · Robotics · Beer“ | entfernt; stattdessen feine Farbverlauf-Linie unter dem Logo/Namen |
 | Hopfendolde | entfernt |
@@ -34,7 +34,7 @@
 | Maßnahme | Wirkung (nicht gemessen, k.A.) |
 |---|---|
 | Ebene Platte, gleichmäßig 2,0 mm, Ecken R4 | gleichmäßige Abkühlung, keine Spannungsspitzen |
-| Relief nur 0,5 mm, nur Name (ca. 3 % der Fläche), ≥ 3 mm vom Rand | begrenzte Asymmetrie des Querschnitts |
+| Relief nur 0,5 mm, Name + Siegel (ca. 5 % der Fläche), ≥ 3 mm vom Rand | begrenzte Asymmetrie des Querschnitts |
 | Rückseite völlig eben | Auflagefläche |
 | Löcher entfallen (`n_bubbles = 0`) | keine Perforation (optional per Parameter) |
 | **Offen:** einseitiges Relief kann Verzug erhöhen | Kontrollkarte `--relief 0` (2,0 mm eben) → EX-001 |
@@ -45,7 +45,7 @@
 
 | Punkt | Status |
 |---|---|
-| Firmenkürzel | „NCAI“ → `ASSUMPTION` Tippfehler, **NCFAI** gedruckt |
+| Firmenkürzel | **NCFAI** (vom Nutzer bestätigt; „NCAI“ war ein Tippfehler) |
 | „Biersommeliere“ | geklärt: Schriftzug **DOEMENS BIERSOMMELIER** (Nutzer-Erratum) |
 | Dateiformat | OBJ + MTL + 2 PNG (ZIP) trägt Verläufe als Textur. Für PAC-HP nennt der Anbieter „OBJ oder 3MF“, für Textur-OBJ ausdrücklich nur Full-Color-Resin → **vor Bestellung beim Support klären** |
 | Farbtreue | sRGB-Quelle ≠ Prozessfarbe; Grün/Orange/Blau-Verläufe `k.A.` → Erstmuster |

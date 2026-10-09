@@ -175,16 +175,33 @@ def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
 
 
 NAME_SIZE = 8.4
+PLAQUE_H, PLAQUE_RIGHT, PLAQUE_BOTTOM = 9.0, 80.0, 51.2
+
+
+def engraved_plaque(text: str) -> tuple[BaseGeometry, float]:
+    """Raised rounded plaque (bottom right) with `text` ENGRAVED down to the base plane.
+
+    Letters are 5.6 mm bold (stroke ~0.9 mm >= 0.8 mm minimum groove width). Returns (geom, size).
+    """
+    size, track, pad = 5.6, 0.35, 2.2
+    w = text_width(text, size, track) + 2 * pad
+    x0, y0 = PLAQUE_RIGHT - w, PLAQUE_BOTTOM - PLAQUE_H
+    r = 1.6
+    body = box(x0 + r, y0 + r, x0 + w - r, y0 + PLAQUE_H - r).buffer(r, quad_segs=16)
+    base = y0 + PLAQUE_H / 2 + cap_height(size) / 2
+    letters = text_geometry(text, size, x0 + w / 2, base, anchor="c", tracking=track)
+    return body.difference(letters), size
 
 
 @dataclass(frozen=True)
 class FrontRelief:
     name: BaseGeometry  # raised
-    raised: BaseGeometry  # after minimum-feature enforcement
+    plaque: BaseGeometry  # raised, monogram engraved
+    raised: BaseGeometry  # union, after minimum-feature enforcement
     removed_area: float  # mm2 changed by enforce_min_feature (should be small)
 
 
-def build_front_relief(name: str, min_feature: float) -> FrontRelief:
+def build_front_relief(name: str, min_feature: float, monogram: str = "NCFAI") -> FrontRelief:
     first, _, last = name.partition(" ")
     name_geom = unary_union(
         [
@@ -192,5 +209,7 @@ def build_front_relief(name: str, min_feature: float) -> FrontRelief:
             text_geometry(last, NAME_SIZE, 41.0, 20.6),
         ]
     )
-    raised = enforce_min_feature(name_geom, min_feature)
-    return FrontRelief(name_geom, raised, name_geom.symmetric_difference(raised).area)
+    plaque = engraved_plaque(monogram)[0] if monogram else Polygon()
+    raw = unary_union([name_geom, plaque])
+    raised = enforce_min_feature(raw, min_feature)
+    return FrontRelief(name_geom, plaque, raised, raw.symmetric_difference(raised).area)

@@ -81,6 +81,7 @@ class CardContent:
     qualification: str
     address: tuple[str, ...]
     url: str = ""
+    monogram: str = "NCFAI"  # engraved into the raised plaque bottom right
     credentials: tuple[tuple[str, str], ...] = ()  # (institution, title), e.g. (DOEMENS, ...)
 
     @staticmethod
@@ -92,6 +93,7 @@ class CardContent:
             d["qualification"],
             tuple(d["address"]),
             d.get("url", ""),
+            d.get("monogram", "NCFAI"),
             tuple((i, ti) for i, ti in d.get("credentials", [])),
         )
 
@@ -229,6 +231,7 @@ def render_front(
     )
     # raised name (navy)
     _paint(d, relief.name, NAVY, ppmm)
+    _paint(d, relief.plaque, NAVY, ppmm)  # engraved letters = white base plane
     # gradient rule (flat colour, base level)
     y0, y1 = _px(23.2, ppmm), _px(23.2 + 0.6, ppmm)
     for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
@@ -637,7 +640,7 @@ def main() -> int:
     bubbles = layout_bubbles(p)
     content = CardContent.load(a.content)
     logo = trim_logo(Image.open(a.logo))
-    rel = build_front_relief(content.name, p.min_feature)
+    rel = build_front_relief(content.name, p.min_feature, content.monogram)
 
     a.out.mkdir(parents=True, exist_ok=True)
     part = a.part_number + ("-flat" if p.relief == 0 else "") + ("-holes" if bubbles else "")

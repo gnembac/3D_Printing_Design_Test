@@ -71,12 +71,15 @@ def test_qr_layout_geometry() -> None:
 def test_relief_mesh_is_single_watertight_shell() -> None:
     for mod in ("shapely", "trimesh", "fontTools", "mapbox_earcut", "PIL"):
         pytest.importorskip(mod)
-    from card_relief import build_front_relief
+    from card_relief import build_front_relief, parts
     from ncfai_card import build_mesh
 
     p = CardParams()
     rel = build_front_relief("Ada Lee", p.min_feature)
     assert rel.raised.area > 50
+    # engraved monogram letters = holes in the raised plaque
+    assert any(len(q.interiors) > 0 for q in parts(rel.plaque))
+    assert rel.plaque.area < rel.plaque.convex_hull.area  # letters cut out of the plaque
     geo = build_mesh(p, [], rel.raised).geometry()
     assert geo.is_watertight and len(geo.split()) == 1
     assert abs(geo.bounds[1][2] - p.total_thickness) < 1e-9
