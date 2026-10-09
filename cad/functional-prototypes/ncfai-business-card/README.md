@@ -12,7 +12,7 @@
 | Firmenlogo | NCFAI-Logo (flach, Farbe) **oben mittig**, darunter Farbverlauf-Linie und zentrierte Firmenzeile |
 | DOEMENS BIERSOMMELIER | **erhaben** (+0,5 mm), eine Zeile über die Kartenbreite, **silber** (Verlauf #CDCDCF → #8C8C91, aus dem Doemens-Screenshot geschätzt), keine Linie |
 | BJCP Beer Judge | blaue Fläche **auf der Hauptebene** (Verlauf #006898 → #004878, aus dem BJCP-Screenshot), Schrift „BJCP / BEER / JUDGE“ **weiß und vertieft** (−0,5 mm unter die Hauptebene), keine Linie |
-| Name | „Gunter Nembach“ **erhaben** (navy) unten links **oberhalb** der Adresse „Heubacher Hauptstr. 33“ |
+| Name | „Gunter Nembach“ **erhaben** (navy) unten links **oberhalb** des Adressblocks |
 | Rückseite | unverändert: Logo mittig links, Roboterkopf oben, Mikrochip unten (flach), QR-Code rechts mit URL |
 | Relief-Schrift | **DejaVu Sans Bold** (kräftigere, gleichmäßigere Striche als Liberation Sans) |
 
