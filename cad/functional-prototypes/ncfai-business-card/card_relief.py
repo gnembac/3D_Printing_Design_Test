@@ -182,7 +182,7 @@ def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
 
 NAME_X, NAME_BASE = 5.0, 40.6
 GIVEN_SIZE, FAMILY_SIZE = 6.8, 5.6  # given name one size larger than the family name
-LIST_X, LIST_SIZE = 5.0, 4.7  # dash list: raised DOEMENS line, engraved BJCP line
+LIST_CX, LIST_SIZE = 42.5, 4.2  # centred lines: raised DOEMENS, engraved BJCP
 DOEMENS_BASE, BJCP_BASE = 27.6, 33.0
 LIST_MAX_RIGHT = 81.5  # raised text keeps >= 3 mm from the card edge (85 - 3.5)
 
@@ -211,11 +211,11 @@ def build_front_relief(
         ]
     )
     lines = []
-    for text, base in (("\u2013 " + doemens, DOEMENS_BASE), ("\u2013 " + bjcp, BJCP_BASE)):
-        right = LIST_X + text_width(text, LIST_SIZE)
-        if right > LIST_MAX_RIGHT:
-            raise ValueError(f"'{text}' too wide ({right:.1f} mm > {LIST_MAX_RIGHT} mm)")
-        lines.append(text_geometry(text, LIST_SIZE, LIST_X, base))
+    for text, base in ((doemens, DOEMENS_BASE), (bjcp, BJCP_BASE)):
+        half = text_width(text, LIST_SIZE) / 2
+        if LIST_CX + half > LIST_MAX_RIGHT or LIST_CX - half < 85.0 - LIST_MAX_RIGHT:
+            raise ValueError(f"'{text}' too wide for the card ({2 * half:.1f} mm)")
+        lines.append(text_geometry(text, LIST_SIZE, LIST_CX, base, anchor="c"))
     recess = enforce_min_feature(lines[1], min_feature)
     raw = unary_union([name_geom, lines[0]])
     raised = enforce_min_feature(raw, min_feature)

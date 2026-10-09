@@ -94,7 +94,7 @@ def test_given_name_is_larger_than_family_name() -> None:
     from card_relief import FAMILY_SIZE, GIVEN_SIZE, build_front_relief
 
     assert GIVEN_SIZE > FAMILY_SIZE
-    rel = build_front_relief("Ada Lee", 0.6)
+    rel = build_front_relief("Ada Lee", 0.5)
     x0, y0, x1, y1 = rel.name.bounds
     assert y1 - y0 > 0 and x0 >= 5.0 - 0.1
 
@@ -105,7 +105,7 @@ def test_overlong_list_line_is_rejected() -> None:
     from card_relief import build_front_relief
 
     with pytest.raises(ValueError):
-        build_front_relief("A B", 0.6, doemens="DOEMENS BIERSOMMELIER UND SENSORIK")
+        build_front_relief("A B", 0.5, doemens="DOEMENS BIERSOMMELIER UND SENSORIK")
 
 
 def test_recess_floor_not_below_general_mjf_wall() -> None:

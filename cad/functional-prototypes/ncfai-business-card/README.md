@@ -1,16 +1,16 @@
 # NCFAI-Visitenkarte – 3D-gedrucktes Unikat (EXP)
 
-**Stand:** 2026-10-09 (Rev. 10: Spiegelstrich-Liste, Gunter größer) · **Revision:** EXP (nicht freigegeben)
+**Stand:** 2026-10-09 (Rev. 11: zentrierte Zeilen ohne Spiegelstrich, 4,2 mm) · **Revision:** EXP (nicht freigegeben)
 **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A (Herstellerdaten, Anhaltswerte)
 
-## 1 Anforderungen → Umsetzung (Rev. 10)
+## 1 Anforderungen → Umsetzung (Rev. 11)
 
 | Anforderung | Umsetzung |
 |---|---|
 | 85 × 55 mm | exakt 85 × 55 mm, Ecken R4, ein Körper (eine Schale) |
 | Dicke max. 2,5 mm | **Grundplatte 2,0 mm** + **0,5 mm Relief (nur Vorderseite) = 2,5 mm** nominal |
 | Firmenlogo | NCFAI-Logo (flach, Farbe, 25 mm breit) oben mittig, darunter Farbverlauf-Linie und zentrierte Firmenzeile |
-| DOEMENS / BJCP | zwei Schriftzüge **untereinander mit Spiegelstrich** (4,7 mm, kleiner als zuvor): „– DOEMENS BIERSOMMELIER“ **erhaben**, silber (Verlauf #CDCDCF → #8C8C91); „– BJCP BEER JUDGE“ **vertieft** (−0,5 mm), Boden im BJCP-Blau (#006898 → #004878). Blaue Fläche/Logo entfällt. Beide Zeilen links bündig |
+| DOEMENS / BJCP | zwei **zentrierte** Schriftzüge untereinander, ohne Spiegelstrich, 4,2 mm (eine Stufe kleiner als 4,7 mm): „DOEMENS BIERSOMMELIER“ **erhaben**, silber (Verlauf #CDCDCF → #8C8C91); „BJCP BEER JUDGE“ **vertieft** (−0,5 mm), Boden im BJCP-Blau (#006898 → #004878) |
 | Name | „**Gunter**“ (6,8 mm) eine Stufe größer als „Nembach“ (5,6 mm), erhaben, navy, über dem Adressblock |
 | Rückseite | Logo mittig links, Roboterkopf oben, Mikrochip unten (flach), QR-Code rechts mit URL |
 | Relief-Schrift | DejaVu Sans Bold (kräftigere, gleichmäßigere Striche) |
@@ -20,7 +20,7 @@
 | Punkt | Wert hier | Anbieter (Supplier CN-A) | Folge |
 |---|---|---|---|
 | Relief-/Gravurtiefe | 0,5 mm | Designregel 0,8 mm, MJF-Artikel 0,5 mm | 2,0 + 0,8 > 2,5 mm |
-| Breite erhabener/vertiefter Striche und Zwischenräume | ≥ 0,6 mm (Mindestfilter), Buchstaben 4,7–6,8 mm DejaVu Bold | 0,8 mm (Artikel 0,5 mm) | bei 0,7 mm zerfiel die gravierte Schrift (Buchstaben-Zwischenräume werden gefüllt); größere Schrift passt nicht auf die Karte |
+| Breite erhabener/vertiefter Striche und Zwischenräume | ≥ 0,5 mm (Mindestfilter = MJF-Artikelwert), Buchstaben 4,2–6,8 mm DejaVu Bold | 0,8 mm (Artikel 0,5 mm) | bei 0,6–0,7 mm zerfiel die gravierte Schrift (Buchstaben-Zwischenräume werden gefüllt); größere Schrift passt nicht auf die Karte |
 | Restwand unter der vertieften BJCP-Schrift | **1,5 mm** (2,0 − 0,5) | PAC-HP-Seite 2,0 mm; MJF allgemein ≤ 50 mm: 1,5 mm | örtlich dünner als das PAC-HP-Wandminimum; alternativ BJCP-Platte erhaben + Gravur bis auf 2,0 mm (wandsicher) |
 
 ## 3 Verzug (Geometrieentscheidung)

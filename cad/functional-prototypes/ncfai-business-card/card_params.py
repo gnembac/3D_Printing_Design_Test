@@ -40,7 +40,7 @@ class CardParams:
     height: float = 55.0
     base_thickness: float = 2.0  # base plate = supplier wall minimum
     relief: float = 0.5  # raised level above the base plane; engraving cuts down to the base
-    min_feature: float = 0.6  # min. width of raised webs and engraved grooves (DEVIATION: <0.8)
+    min_feature: float = 0.5  # min. width of raised webs and engraved grooves (DEVIATION: <0.8)
     relief_margin: float = 3.0  # raised features keep this distance from the card edge
     recess_depth: float = 0.5  # engraved letters cut BELOW the base plane (0 = flat print only)
     corner_r: float = 4.0  # outer corner radius (no sharp corners -> less warp-prone)
