@@ -108,6 +108,70 @@ Reliefkörper kollidieren (`check_fit`).
 | ruff format/check, pytest (Parameter + Geometrie) | bestanden |
 | Slicer-Vorschau, Probedruck (Taschenspiel, Magnetkraft, Details mit 0,2 mm), Lesbarkeit bei 5–10 lx | **offen** |
 
+## 11 Einteiler-Varianten für Druckdienste (Rev. 2a, 2026-10-09)
+
+Ein Druckdienst (JLC3DP) lehnte das Mehrfarb-3MF ab: „file contains multiple shells … combine the shells as one part
+(one file supports printing one part/shell)". Mehrere Objekte bzw. lose Schalen (Buchstaben, Symbole) pro Datei sind dort
+nicht möglich. `fuse_onepiece()` verschmilzt alle Farbkörper zu **einem** Volumenkörper (Skriptprüfung: genau 1 Solid).
+Das Teil wird **einfarbig** gefertigt – die Farbunterschiede entfallen, der Kontrast muss über Form/Schatten kommen.
+
+| Datei (2026-10-09) | Inhalt | Prüfung (trimesh) |
+|---|---|---|
+| `BJCP_badge-onepiece-mono_…` (STL/3MF) | **Empfohlen für Einfarbdruck:** Relief 1,2 mm überall, Schattennuten auch bei kleiner Schrift voll tief (0,8 mm) | wasserdicht, 1 Schale, 24 823 mm³ |
+| `BJCP_badge-onepiece_…` (STL/3MF) | wie Mehrfarb-Geometrie (Relief 0,8 mm, flache Nuten), nur verschmolzen | wasserdicht, 1 Schale, 24 686 mm³ |
+| `BJCP_badge-counterplate_…` (STL/3MF) | Gegenplatte | wasserdicht, 1 Schale |
+
+### 11.1 Farbvariante als EIN Körper (`onepiece-colour`)
+
+Farbe und „eine Schale" schließen sich nicht aus, wenn die Farbe als **Flächenfarbe im Modell** steckt statt in getrennten
+Objekten: `export_colour_onepiece.py` weist jeder Fläche des verschmolzenen Körpers die Farbe des Farbkörpers zu, auf
+dessen Oberfläche sie liegt (`fuse_onepiece(keep_faces=True)` verschmilzt ohne Zusammenfassen coplanarer Flächen, damit
+Farbgrenzen Flächengrenzen bleiben).
+
+| Datei (2026-10-09) | Format | Prüfung (trimesh) |
+|---|---|---|
+| `BJCP_badge-onepiece-colour_…3mf` | 1 Objekt, Farbe je Dreieck (basematerials) | wasserdicht, 1 Schale, 43 056 farbige Dreiecke |
+| `BJCP_badge-onepiece-colour_…ply` | Flächenfarben (RGBA) | wasserdicht, 1 Schale, 5 Farben, 24 685 mm³ |
+
+Nutzbar nur bei einem Verfahren mit Vollfarbe (laut JLC3DP-Hilfe: Full-Color-Resin/WJP mit OBJ/PLY/STL, Nylon PAC-HP mit
+3MF inkl. Farbdaten; ohne Farbdaten wird grau gefertigt). **Nicht** geprüft/`k.A.`: ob Mindestdetailgröße (Gersten-Grannen
+0,5 mm, Schrift 4,4 mm), Wandstärken und Farbtreue (Anbieter warnt vor Farbabweichung) dieser Verfahren zum Modell passen;
+FDM/PLA bietet laut Recherche keine Mehrfarbe pro Teil. Rückfrage beim Support / Sofortangebot nötig.
+
+Einfarbige Alternativen (`onepiece`, `onepiece-mono`): Farbe nachträglich per Bemalen oder Dienst-Finish (Lackieren/Färben
+laut Anbieter-Website angeboten; Details `k.A.`).
+
+**Korrektur Rev. 2a:** In Rev. 2 (2026-10-08) waren die Hopfen-Schuppen-Gravuren wegen eines Verschiebefehlers
+(Gravurkörper lag über der Oberfläche) **nicht** vorhanden, obwohl dokumentiert. Behoben; alle Dateien vom 2026-10-09
+enthalten die Schuppen (Tiefe = halbe Reliefhöhe). Die Dateien vom 2026-10-08 sind damit überholt.
+
+## 12 PAC-HP-Variante (JLC3DP Nylon PAC-HP, Vollfarbe, MJF)
+
+Bestellvorgabe laut JLC3DP-Hilfe (Herstellerdaten, Anhaltswerte, Seiten 1–3 Jahre alt – vor Bestellung prüfen): 3MF mit
+Farbdaten (sonst grau), Prägung/Gravur min. 0,8 mm breit und tief, Wandstärke 2 mm (PAC-HP-Seite) bzw. 1,0 mm (MJF-Leitfaden).
+`pac_hp_variant()` (in `badge_params.py`) passt das Modell an:
+
+| Merkmal | Vorher | PAC-HP-Variante |
+|---|---|---|
+| Boden über Magnettaschen (Badge/Gegenplatte) | 0,8 mm | **1,0 mm** (Platte 3,2 mm) |
+| Gersten-Grannen / Konturlinie | 0,55 / 0,6 mm | **0,8 mm** |
+| Hopfen-Schuppenlinien (0,47 mm) | graviert | **entfallen** (unter Mindestbreite) |
+| Schattennut kleine Schrift (0,4 mm tief) | ja | **entfallen** (unter Mindesttiefe, und schwarzer Schatten verschmierte Ort/ID) |
+| Ortszeile | 5,0 mm | 5,4 mm (Strichstärke ≥ 0,8 mm) |
+| Name (Schattennut 0,8 × 0,8 mm) | ja | unverändert |
+
+Erzeugung: `bjcp_badge.py --variant pac-hp --out <dir>` → Farbkörper-STL + `onepiece-split`; danach
+`export_colour_onepiece.py --stl-dir <dir>/stl --material PAC-HP --process MJF --date <YYYY-MM-DD> --out <dir2>`.
+
+| Datei (…EXP_MJF_PAC-HP_2026-10-09) | Prüfung (trimesh) |
+|---|---|
+| `BJCP_badge-onepiece-colour.3mf` (1 Objekt, Farbe je Dreieck) | wasserdicht, 1 Schale, 27 628 farbige Dreiecke |
+| `BJCP_badge-onepiece-colour.ply` (Flächenfarben) | wasserdicht, 1 Schale, 5 Farben, 26 011 mm³ |
+| `BJCP_badge-counterplate.3mf/.stl` | wasserdicht, 1 Schale, 3,2 mm |
+
+`k.A.`: ob JLC3DP die Farbdarstellung im 3MF (basematerials je Dreieck) liest – in der Vorschau der Bestellseite prüfen;
+MJF-Nylon-Farbabweichung; Mindestdetails ggf. aktueller als hier angegeben.
+
 ## 10 Offene Punkte / Folge-Exercise
 
 - Probedruck → Taschen-Passung, Haltekraft durch Stoff, Detailtreue Hopfen/Gerste/Schatten, Lesbarkeit bei Dunkelheit (`EX-NNN`).

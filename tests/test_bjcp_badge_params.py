@@ -9,7 +9,7 @@ BADGE_DIR = (
 )
 sys.path.insert(0, str(BADGE_DIR))
 
-from badge_params import BadgeParams  # noqa: E402
+from badge_params import PAC_HP_MIN_FEATURE, BadgeParams, pac_hp_variant  # noqa: E402
 
 
 def test_defaults_valid() -> None:
@@ -46,6 +46,17 @@ def test_rejects_magnets_too_close_to_rim() -> None:
 def test_rejects_thin_counter_plate_wall() -> None:
     with pytest.raises(ValueError):
         replace(BadgeParams(), plate_w=41.0).validate()
+
+
+def test_pac_hp_variant_valid_and_meets_minimums() -> None:
+    v = pac_hp_variant(BadgeParams())
+    v.validate()
+    assert v.base_thickness - v.pocket_depth >= 1.0 - 1e-9  # floor above magnet pocket
+    assert v.plate_t - v.pocket_depth >= 1.0 - 1e-9
+    assert v.awn_width >= PAC_HP_MIN_FEATURE and v.outline_width >= PAC_HP_MIN_FEATURE
+    assert v.relief >= PAC_HP_MIN_FEATURE and v.shadow_offset >= PAC_HP_MIN_FEATURE
+    assert not v.hop_scales  # 0.47 mm scale lines are below the minimum
+    assert v.small_shadow_depth == 0.0  # no 0.4 mm groove (below minimum depth)
 
 
 def test_geometry_build_if_cadquery_available() -> None:
