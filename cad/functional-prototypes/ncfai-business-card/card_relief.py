@@ -180,18 +180,18 @@ def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
     return g.buffer(r, quad_segs=8).buffer(-r, quad_segs=8)
 
 
-NAME_SIZE, NAME_X, NAME_BASE = 5.4, 5.0, 41.0  # raised, above the address block
-DOEMENS_BASE, DOEMENS_MAX_W = 31.2, 78.8  # raised, centred on the card
-PANEL_RIGHT, PANEL_Y0, PANEL_Y1 = 81.0, 33.4, 51.4  # flat blue panel (BJCP), letters recessed
-BJCP_SIZE, BJCP_PAD, BJCP_GAP = 5.4, 1.8, 1.6
+NAME_X, NAME_BASE = 5.0, 40.6
+GIVEN_SIZE, FAMILY_SIZE = 6.8, 5.6  # given name one size larger than the family name
+LIST_X, LIST_SIZE = 5.0, 4.7  # dash list: raised DOEMENS line, engraved BJCP line
+DOEMENS_BASE, BJCP_BASE = 27.6, 33.0
+LIST_MAX_RIGHT = 81.5  # raised text keeps >= 3 mm from the card edge (85 - 3.5)
 
 
 @dataclass(frozen=True)
 class FrontRelief:
     name: BaseGeometry  # raised
     doemens: BaseGeometry  # raised
-    panel: BaseGeometry  # flat colour panel on the base plane (no height)
-    recess: BaseGeometry  # letters cut below the base plane inside the panel
+    recess: BaseGeometry  # BJCP lettering, cut below the base plane
     raised: BaseGeometry  # name + doemens after minimum-feature enforcement
     removed_area: float  # mm2 changed by enforce_min_feature (should be small)
 
@@ -200,30 +200,23 @@ def build_front_relief(
     name: str,
     min_feature: float,
     doemens: str = "DOEMENS BIERSOMMELIER",
-    bjcp: tuple[str, ...] = ("BJCP", "Beer", "Judge"),
-    card_width: float = 85.0,
+    bjcp: str = "BJCP BEER JUDGE",
 ) -> FrontRelief:
-    name_geom = text_geometry(name, NAME_SIZE, NAME_X, NAME_BASE)
-    size = min(5.8, DOEMENS_MAX_W / text_width(doemens, 1.0))
-    if size < 4.9:  # DejaVu Bold horizontals ~0.15 em must stay >= ~0.7 mm
-        raise ValueError(f"'{doemens}' too long for one raised line (size {size:.2f} < 4.9 mm)")
-    doem = text_geometry(doemens, size, card_width / 2, DOEMENS_BASE, anchor="c")
-    # BJCP panel: stacked engraved lines, centred in a rounded blue panel at the bottom right
-    w = max(text_width(line, BJCP_SIZE) for line in bjcp) + 2 * BJCP_PAD
-    x0 = PANEL_RIGHT - w
-    r = 2.0
-    panel = box(x0 + r, PANEL_Y0 + r, PANEL_RIGHT - r, PANEL_Y1 - r).buffer(r, quad_segs=16)
-    cap = cap_height(BJCP_SIZE)
-    top = (PANEL_Y0 + PANEL_Y1) / 2 - (len(bjcp) * cap + (len(bjcp) - 1) * BJCP_GAP) / 2
-    letters = unary_union(
+    first, _, last = name.partition(" ")
+    x_last = NAME_X + text_width(first, GIVEN_SIZE) + text_width(" ", FAMILY_SIZE)
+    name_geom = unary_union(
         [
-            text_geometry(line, BJCP_SIZE, x0 + w / 2, top + cap + i * (cap + BJCP_GAP), "c")
-            for i, line in enumerate(bjcp)
+            text_geometry(first, GIVEN_SIZE, NAME_X, NAME_BASE),
+            text_geometry(last, FAMILY_SIZE, x_last, NAME_BASE),
         ]
     )
-    recess = enforce_min_feature(letters, min_feature)
-    raw = unary_union([name_geom, doem])
+    lines = []
+    for text, base in (("\u2013 " + doemens, DOEMENS_BASE), ("\u2013 " + bjcp, BJCP_BASE)):
+        right = LIST_X + text_width(text, LIST_SIZE)
+        if right > LIST_MAX_RIGHT:
+            raise ValueError(f"'{text}' too wide ({right:.1f} mm > {LIST_MAX_RIGHT} mm)")
+        lines.append(text_geometry(text, LIST_SIZE, LIST_X, base))
+    recess = enforce_min_feature(lines[1], min_feature)
+    raw = unary_union([name_geom, lines[0]])
     raised = enforce_min_feature(raw, min_feature)
-    return FrontRelief(
-        name_geom, doem, panel, recess, raised, raw.symmetric_difference(raised).area
-    )
+    return FrontRelief(name_geom, lines[0], recess, raised, raw.symmetric_difference(raised).area)

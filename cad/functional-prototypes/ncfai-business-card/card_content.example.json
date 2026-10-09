@@ -9,9 +9,5 @@
   ],
   "url": "https://example.com/",
   "doemens": "EXAMPLE TITLE",
-  "bjcp": [
-    "WORD",
-    "TWO",
-    "WORDS"
-  ]
+  "bjcp": "EXAMPLE JUDGE"
 }

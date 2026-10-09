@@ -76,7 +76,7 @@ def test_relief_and_recess_mesh_is_single_watertight_shell() -> None:
 
     p = CardParams()
     rel = build_front_relief("Ada Lee", p.min_feature)
-    assert rel.raised.area > 50 and rel.recess.area > 20
+    assert rel.raised.area > 50 and rel.recess.area > 10
     geo = build_mesh(p, [], rel.raised, rel.recess).geometry()
     assert geo.is_watertight and len(geo.split()) == 1
     assert abs(geo.bounds[1][2] - p.total_thickness) < 1e-9
@@ -86,6 +86,26 @@ def test_relief_and_recess_mesh_is_single_watertight_shell() -> None:
     # flat control variant: plain 2.0 mm plate
     flat = build_mesh(replace(p, relief=0.0, recess_depth=0.0), [], None).geometry()
     assert flat.is_watertight and abs(flat.bounds[1][2] - 2.0) < 1e-9
+
+
+def test_given_name_is_larger_than_family_name() -> None:
+    pytest.importorskip("shapely")
+    pytest.importorskip("fontTools")
+    from card_relief import FAMILY_SIZE, GIVEN_SIZE, build_front_relief
+
+    assert GIVEN_SIZE > FAMILY_SIZE
+    rel = build_front_relief("Ada Lee", 0.6)
+    x0, y0, x1, y1 = rel.name.bounds
+    assert y1 - y0 > 0 and x0 >= 5.0 - 0.1
+
+
+def test_overlong_list_line_is_rejected() -> None:
+    pytest.importorskip("shapely")
+    pytest.importorskip("fontTools")
+    from card_relief import build_front_relief
+
+    with pytest.raises(ValueError):
+        build_front_relief("A B", 0.6, doemens="DOEMENS BIERSOMMELIER UND SENSORIK")
 
 
 def test_recess_floor_not_below_general_mjf_wall() -> None:

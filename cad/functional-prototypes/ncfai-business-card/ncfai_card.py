@@ -77,7 +77,7 @@ class CardContent:
     address: tuple[str, ...]
     url: str = ""
     doemens: str = "DOEMENS BIERSOMMELIER"  # raised, silver
-    bjcp: tuple[str, ...] = ("BJCP", "Beer", "Judge")  # engraved, white on blue panel
+    bjcp: str = "BJCP BEER JUDGE"  # engraved (recessed), BJCP blue
 
     @staticmethod
     def load(path: Path) -> CardContent:
@@ -89,7 +89,7 @@ class CardContent:
             tuple(d["address"]),
             d.get("url", ""),
             d.get("doemens", "DOEMENS BIERSOMMELIER"),
-            tuple(d.get("bjcp", ["BJCP", "Beer", "Judge"])),
+            d.get("bjcp", "BJCP BEER JUDGE"),
         )
 
 
@@ -202,29 +202,27 @@ def render_front(
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
     d = ImageDraw.Draw(img)
     # company logo, top centre (flat colour)
-    lw = 29.0
+    lw = 25.0
     lh = lw * logo.height / logo.width
     img.paste(
         logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS),
-        (_px(p.width / 2 - lw / 2, ppmm), _px(4.0, ppmm)),
+        (_px(p.width / 2 - lw / 2, ppmm), _px(3.8, ppmm)),
     )
     # gradient rule (flat colour, base level) + centred company line
-    y0, y1 = _px(20.4, ppmm), _px(20.4 + 0.6, ppmm)
+    y0, y1 = _px(17.9, ppmm), _px(17.9 + 0.6, ppmm)
     for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
         d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
     d.text(
-        (_px(p.width / 2, ppmm), _px(24.9, ppmm)),
+        (_px(p.width / 2, ppmm), _px(22.3, ppmm)),
         c.company,
         font=font(3.0, ppmm),
         fill=NAVY,
         anchor="ms",
     )
-    # DOEMENS: raised silver lettering (metallic vertical gradient)
+    # dash list: DOEMENS raised in silver, BJCP engraved (floor printed BJCP blue)
     _paint_gradient(img, relief.doemens, [SILVER_TOP, SILVER_BOT], ppmm, vertical=True)
-    # BJCP: blue panel on the base plane, letters recessed (white = bare nylon)
-    _paint_gradient(img, relief.panel, [BJCP_BLUE_TOP, BJCP_BLUE_BOT], ppmm, vertical=True)
-    _paint(d, relief.recess, (255, 255, 255), ppmm, hole=BJCP_BLUE_BOT)
-    # name (raised, navy) above the address block
+    _paint_gradient(img, relief.recess, [BJCP_BLUE_TOP, BJCP_BLUE_BOT], ppmm, vertical=True)
+    # name (raised, navy; given name one size larger) above the address block
     _paint(d, relief.name, NAVY, ppmm)
     f3 = font(2.6, ppmm)
     for i, line in enumerate(c.address):
@@ -669,7 +667,7 @@ def main() -> int:
     bubbles = layout_bubbles(p)
     content = CardContent.load(a.content)
     logo = trim_logo(Image.open(a.logo))
-    rel = build_front_relief(content.name, p.min_feature, content.doemens, content.bjcp, p.width)
+    rel = build_front_relief(content.name, p.min_feature, content.doemens, content.bjcp)
 
     a.out.mkdir(parents=True, exist_ok=True)
     part = a.part_number + ("-flat" if p.relief == 0 else "") + ("-holes" if bubbles else "")
