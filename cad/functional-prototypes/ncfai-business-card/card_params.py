@@ -22,7 +22,9 @@ SUPPLIER_HOLE_MIN = 1.5  # minimum hole diameter (holes tend to come out undersi
 # --- project requirement -----------------------------------------------------------------
 THICKNESS_MAX = 2.5  # user requirement: material thickness max. 2.5 mm (nominal, incl. relief)
 RELIEF_MIN = 0.5  # embossed/engraved depth: MJF article value; the CN-A design rule says 0.8
+RECESS_FLOOR_MIN = 1.5  # general MJF wall rule for features <= 50 mm (PAC-HP page says 2.0!)
 FEATURE_MIN = 0.8  # embossed/engraved width (conservative CN-A value)
+FEATURE_ARTICLE = 0.5  # MJF article value; widths between 0.5 and 0.8 are a flagged deviation
 
 
 @dataclass(frozen=True)
@@ -38,8 +40,9 @@ class CardParams:
     height: float = 55.0
     base_thickness: float = 2.0  # base plate = supplier wall minimum
     relief: float = 0.5  # raised level above the base plane; engraving cuts down to the base
-    min_feature: float = FEATURE_MIN  # min. width of raised webs and engraved grooves
+    min_feature: float = 0.7  # min. width of raised webs and engraved grooves (DEVIATION: <0.8)
     relief_margin: float = 3.0  # raised features keep this distance from the card edge
+    recess_depth: float = 0.5  # engraved letters cut BELOW the base plane (0 = flat print only)
     corner_r: float = 4.0  # outer corner radius (no sharp corners -> less warp-prone)
     seed: str = "NCFAI-UNIKAT-001"
     n_bubbles: int = 0  # optional through-holes ("bubbles"); 0 = none (default since Rev. 3)
@@ -62,8 +65,12 @@ class CardParams:
             raise ValueError(f"base + relief = {self.total_thickness} exceeds {THICKNESS_MAX} mm")
         if self.relief != 0 and self.relief < RELIEF_MIN:
             raise ValueError(f"relief {self.relief} below {RELIEF_MIN} mm (0 = flat variant)")
-        if self.min_feature < FEATURE_MIN:
-            raise ValueError(f"min_feature {self.min_feature} below {FEATURE_MIN} mm")
+        if self.recess_depth < 0 or (self.recess_depth and self.recess_depth < RELIEF_MIN):
+            raise ValueError(f"recess_depth {self.recess_depth}: 0 or >= {RELIEF_MIN} mm")
+        if self.base_thickness - self.recess_depth < RECESS_FLOOR_MIN - 1e-9:
+            raise ValueError(f"floor under recess < {RECESS_FLOOR_MIN} mm")
+        if self.min_feature < FEATURE_ARTICLE:
+            raise ValueError(f"min_feature {self.min_feature} below {FEATURE_ARTICLE} mm")
         if not 2.0 <= self.corner_r <= min(self.width, self.height) / 2:
             raise ValueError("corner_r must be 2 mm .. half of the short side")
         if self.n_bubbles < 0:

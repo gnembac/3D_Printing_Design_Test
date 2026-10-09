@@ -21,9 +21,11 @@ from shapely.geometry import Point, Polygon, box
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import unary_union
 
+# Relief lettering uses DejaVu Sans Bold: heavier, more uniform strokes (stem ~0.18 em,
+# horizontals ~0.15 em) than Liberation Sans Bold -> survives the 0.7 mm minimum-feature filter.
 FONT_FILES = (
-    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
     "C:/Windows/Fonts/arialbd.ttf",
 )
 
@@ -100,8 +102,12 @@ def text_width(text: str, size_mm: float, tracking: float = 0.0) -> float:
 
 
 def cap_height(size_mm: float) -> float:
+    """Height of capital 'H' (font-independent: measured from the glyph outline)."""
     f = _font(font_path())
-    return f["OS/2"].sCapHeight * size_mm / f["head"].unitsPerEm
+    pen = _FlatPen(f.getGlyphSet())
+    f.getGlyphSet()[f.getBestCmap()[ord("H")]].draw(pen)
+    top = max(y for ring in pen.rings for _, y in ring)
+    return top * size_mm / f["head"].unitsPerEm
 
 
 def text_geometry(
@@ -174,42 +180,50 @@ def enforce_min_feature(geom: BaseGeometry, w: float) -> BaseGeometry:
     return g.buffer(r, quad_segs=8).buffer(-r, quad_segs=8)
 
 
-NAME_SIZE = 8.4
-PLAQUE_H, PLAQUE_RIGHT, PLAQUE_BOTTOM = 9.0, 80.0, 51.2
-
-
-def engraved_plaque(text: str) -> tuple[BaseGeometry, float]:
-    """Raised rounded plaque (bottom right) with `text` ENGRAVED down to the base plane.
-
-    Letters are 5.6 mm bold (stroke ~0.9 mm >= 0.8 mm minimum groove width). Returns (geom, size).
-    """
-    size, track, pad = 5.6, 0.35, 2.2
-    w = text_width(text, size, track) + 2 * pad
-    x0, y0 = PLAQUE_RIGHT - w, PLAQUE_BOTTOM - PLAQUE_H
-    r = 1.6
-    body = box(x0 + r, y0 + r, x0 + w - r, y0 + PLAQUE_H - r).buffer(r, quad_segs=16)
-    base = y0 + PLAQUE_H / 2 + cap_height(size) / 2
-    letters = text_geometry(text, size, x0 + w / 2, base, anchor="c", tracking=track)
-    return body.difference(letters), size
+NAME_SIZE, NAME_X, NAME_BASE = 5.4, 5.0, 41.0  # raised, above the address block
+DOEMENS_BASE, DOEMENS_MAX_W = 31.2, 78.8  # raised, centred on the card
+PANEL_RIGHT, PANEL_Y0, PANEL_Y1 = 81.0, 33.4, 51.4  # flat blue panel (BJCP), letters recessed
+BJCP_SIZE, BJCP_PAD, BJCP_GAP = 5.4, 1.8, 1.6
 
 
 @dataclass(frozen=True)
 class FrontRelief:
     name: BaseGeometry  # raised
-    plaque: BaseGeometry  # raised, monogram engraved
-    raised: BaseGeometry  # union, after minimum-feature enforcement
+    doemens: BaseGeometry  # raised
+    panel: BaseGeometry  # flat colour panel on the base plane (no height)
+    recess: BaseGeometry  # letters cut below the base plane inside the panel
+    raised: BaseGeometry  # name + doemens after minimum-feature enforcement
     removed_area: float  # mm2 changed by enforce_min_feature (should be small)
 
 
-def build_front_relief(name: str, min_feature: float, monogram: str = "") -> FrontRelief:
-    first, _, last = name.partition(" ")
-    name_geom = unary_union(
+def build_front_relief(
+    name: str,
+    min_feature: float,
+    doemens: str = "DOEMENS BIERSOMMELIER",
+    bjcp: tuple[str, ...] = ("BJCP", "Beer", "Judge"),
+    card_width: float = 85.0,
+) -> FrontRelief:
+    name_geom = text_geometry(name, NAME_SIZE, NAME_X, NAME_BASE)
+    size = min(5.8, DOEMENS_MAX_W / text_width(doemens, 1.0))
+    if size < 4.9:  # DejaVu Bold horizontals ~0.15 em must stay >= ~0.7 mm
+        raise ValueError(f"'{doemens}' too long for one raised line (size {size:.2f} < 4.9 mm)")
+    doem = text_geometry(doemens, size, card_width / 2, DOEMENS_BASE, anchor="c")
+    # BJCP panel: stacked engraved lines, centred in a rounded blue panel at the bottom right
+    w = max(text_width(line, BJCP_SIZE) for line in bjcp) + 2 * BJCP_PAD
+    x0 = PANEL_RIGHT - w
+    r = 2.0
+    panel = box(x0 + r, PANEL_Y0 + r, PANEL_RIGHT - r, PANEL_Y1 - r).buffer(r, quad_segs=16)
+    cap = cap_height(BJCP_SIZE)
+    top = (PANEL_Y0 + PANEL_Y1) / 2 - (len(bjcp) * cap + (len(bjcp) - 1) * BJCP_GAP) / 2
+    letters = unary_union(
         [
-            text_geometry(first, NAME_SIZE, 41.0, 11.4),
-            text_geometry(last, NAME_SIZE, 41.0, 20.6),
+            text_geometry(line, BJCP_SIZE, x0 + w / 2, top + cap + i * (cap + BJCP_GAP), "c")
+            for i, line in enumerate(bjcp)
         ]
     )
-    plaque = engraved_plaque(monogram)[0] if monogram else Polygon()
-    raw = unary_union([name_geom, plaque])
+    recess = enforce_min_feature(letters, min_feature)
+    raw = unary_union([name_geom, doem])
     raised = enforce_min_feature(raw, min_feature)
-    return FrontRelief(name_geom, plaque, raised, raw.symmetric_difference(raised).area)
+    return FrontRelief(
+        name_geom, doem, panel, recess, raised, raw.symmetric_difference(raised).area
+    )

@@ -27,9 +27,9 @@ def test_envelope_respects_wall_min_and_max() -> None:
     replace(CardParams(), relief=0.0).validate()  # flat control variant
 
 
-def test_min_feature_not_below_supplier_value() -> None:
+def test_min_feature_not_below_article_value() -> None:
     with pytest.raises(ValueError):
-        replace(CardParams(), min_feature=0.5).validate()
+        replace(CardParams(), min_feature=0.4).validate()
 
 
 def test_layout_is_reproducible_and_seed_dependent() -> None:
@@ -68,24 +68,29 @@ def test_qr_layout_geometry() -> None:
     assert abs((q.x - x0) - QUIET_MODULES * q.module_mm) < 1e-9 and x1 > q.x + q.size
 
 
-def test_relief_mesh_is_single_watertight_shell() -> None:
+def test_relief_and_recess_mesh_is_single_watertight_shell() -> None:
     for mod in ("shapely", "trimesh", "fontTools", "mapbox_earcut", "PIL"):
         pytest.importorskip(mod)
-    from card_relief import build_front_relief, parts
+    from card_relief import build_front_relief
     from ncfai_card import build_mesh
 
     p = CardParams()
-    rel = build_front_relief("Ada Lee", p.min_feature, "NCFAI")
-    assert rel.raised.area > 50
-    # engraved monogram letters = holes in the raised plaque
-    assert any(len(q.interiors) > 0 for q in parts(rel.plaque))
-    assert rel.plaque.area < rel.plaque.convex_hull.area  # letters cut out of the plaque
-    geo = build_mesh(p, [], rel.raised).geometry()
+    rel = build_front_relief("Ada Lee", p.min_feature)
+    assert rel.raised.area > 50 and rel.recess.area > 20
+    geo = build_mesh(p, [], rel.raised, rel.recess).geometry()
     assert geo.is_watertight and len(geo.split()) == 1
     assert abs(geo.bounds[1][2] - p.total_thickness) < 1e-9
+    # recessed letters remove material compared with the same card without recess
+    no_recess = build_mesh(replace(p, recess_depth=0.0), [], rel.raised, rel.recess).geometry()
+    assert geo.volume < no_recess.volume
     # flat control variant: plain 2.0 mm plate
-    flat = build_mesh(replace(p, relief=0.0), [], None).geometry()
+    flat = build_mesh(replace(p, relief=0.0, recess_depth=0.0), [], None).geometry()
     assert flat.is_watertight and abs(flat.bounds[1][2] - 2.0) < 1e-9
+
+
+def test_recess_floor_not_below_general_mjf_wall() -> None:
+    with pytest.raises(ValueError):
+        replace(CardParams(), recess_depth=0.8).validate()  # floor 1.2 < 1.5
 
 
 def test_icons_respect_min_feature() -> None:

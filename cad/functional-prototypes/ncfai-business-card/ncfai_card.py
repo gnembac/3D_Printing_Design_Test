@@ -58,14 +58,9 @@ FONT_BOLD = (
 )
 PRINT_MARGIN = 1.5  # keep ink away from the card edge (colour/geometry registration `ASSUMPTION`)
 RING_GAP, RING_W = 0.6, 0.9  # colour ring around each hole, mm
-# Brand colours sampled from the institutions' own logos (`estimated`, sRGB)
-DOEMENS_GREEN, DOEMENS_BLUE = (165, 204, 84), (0, 68, 137)
-BJCP_BLUE, BJCP_AMBER = (26, 69, 97), (231, 163, 61)
-BRAND = {  # institution -> (word colour, title colour, underline accent)
-    "DOEMENS": (DOEMENS_GREEN, DOEMENS_BLUE, DOEMENS_GREEN),
-    "BJCP": (BJCP_BLUE, BJCP_BLUE, BJCP_AMBER),
-}
-CRED_SIZE = 2.9  # mm, credential lines (flat colour)
+# Colours sampled from the institutions' own logos/screenshots (`estimated`, sRGB)
+SILVER_TOP, SILVER_BOT = (205, 205, 207), (140, 140, 145)  # DOEMENS embossed lettering
+BJCP_BLUE_TOP, BJCP_BLUE_BOT = (0, 104, 152), (0, 72, 120)  # BJCP banner blue
 QR_DARK = (0, 0, 0)  # K black: max. contrast (supplier colour mapping `k.A.`)
 QR_LOGO_GAP = 0.0  # logo may use the left half up to the QR quiet zone
 QR_RIGHT, QR_TOP = 7.0, 7.0  # module area: distance from right edge / top, mm
@@ -81,8 +76,8 @@ class CardContent:
     qualification: str
     address: tuple[str, ...]
     url: str = ""
-    monogram: str = ""  # optional: engraved into a raised plaque bottom right (off by default)
-    credentials: tuple[tuple[str, str], ...] = ()  # (institution, title), e.g. (DOEMENS, ...)
+    doemens: str = "DOEMENS BIERSOMMELIER"  # raised, silver
+    bjcp: tuple[str, ...] = ("BJCP", "Beer", "Judge")  # engraved, white on blue panel
 
     @staticmethod
     def load(path: Path) -> CardContent:
@@ -93,8 +88,8 @@ class CardContent:
             d["qualification"],
             tuple(d["address"]),
             d.get("url", ""),
-            d.get("monogram", ""),
-            tuple((i, ti) for i, ti in d.get("credentials", [])),
+            d.get("doemens", "DOEMENS BIERSOMMELIER"),
+            tuple(d.get("bjcp", ["BJCP", "Beer", "Judge"])),
         )
 
 
@@ -196,23 +191,6 @@ def _paint_gradient(
     img.paste(Image.fromarray(grad.astype("uint8")), mask=mask)
 
 
-def _draw_credential(
-    d: ImageDraw.ImageDraw, inst: str, title: str, cx: float, baseline: float, ppmm: float
-) -> None:
-    """`INSTITUTION Title` centred on x = cx (mm), brand colours + thin accent underline."""
-    word_c, title_c, accent = BRAND.get(inst.upper(), (NAVY, NAVY, NAVY))
-    f = font(CRED_SIZE, ppmm)
-    w_inst = d.textlength(inst + " ", font=f)
-    total = w_inst + d.textlength(title, font=f)
-    x0 = cx * ppmm - total / 2
-    d.text((x0, baseline * ppmm), inst, font=f, fill=word_c, anchor="ls")
-    d.text((x0 + w_inst, baseline * ppmm), title, font=f, fill=title_c, anchor="ls")
-    d.rectangle(
-        [round(x0), _px(baseline + 0.6, ppmm), round(x0 + total), _px(baseline + 1.05, ppmm) - 1],
-        fill=accent,
-    )
-
-
 def render_front(
     p: CardParams,
     c: CardContent,
@@ -223,33 +201,34 @@ def render_front(
 ) -> Image.Image:
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
     d = ImageDraw.Draw(img)
-    # logo, top-left, width 31 mm (flat colour)
-    lw = 31.0
+    # company logo, top centre (flat colour)
+    lw = 29.0
     lh = lw * logo.height / logo.width
     img.paste(
         logo.resize((_px(lw, ppmm), _px(lh, ppmm)), Image.LANCZOS),
-        (_px(5.0, ppmm), _px(5.0, ppmm)),
+        (_px(p.width / 2 - lw / 2, ppmm), _px(4.0, ppmm)),
     )
-    # raised name (navy)
-    _paint(d, relief.name, NAVY, ppmm)
-    _paint(d, relief.plaque, NAVY, ppmm)  # engraved letters = white base plane
-    # gradient rule (flat colour, base level)
-    y0, y1 = _px(23.2, ppmm), _px(23.2 + 0.6, ppmm)
+    # gradient rule (flat colour, base level) + centred company line
+    y0, y1 = _px(20.4, ppmm), _px(20.4 + 0.6, ppmm)
     for x in range(_px(5.0, ppmm), _px(p.width - 5.0, ppmm)):
         d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
-    # flat (printed, no relief) text: strokes too thin for 0.8 mm relief
     d.text(
-        (_px(p.width / 2, ppmm), _px(27.9, ppmm)),
+        (_px(p.width / 2, ppmm), _px(24.9, ppmm)),
         c.company,
-        font=font(3.3, ppmm),
+        font=font(3.0, ppmm),
         fill=NAVY,
-        anchor="ms",  # centred on the card
+        anchor="ms",
     )
-    for i, (inst, title) in enumerate(c.credentials):
-        _draw_credential(d, inst, title, p.width / 2, 33.4 + 5.0 * i, ppmm)
-    f3 = font(2.7, ppmm)
+    # DOEMENS: raised silver lettering (metallic vertical gradient)
+    _paint_gradient(img, relief.doemens, [SILVER_TOP, SILVER_BOT], ppmm, vertical=True)
+    # BJCP: blue panel on the base plane, letters recessed (white = bare nylon)
+    _paint_gradient(img, relief.panel, [BJCP_BLUE_TOP, BJCP_BLUE_BOT], ppmm, vertical=True)
+    _paint(d, relief.recess, (255, 255, 255), ppmm, hole=BJCP_BLUE_BOT)
+    # name (raised, navy) above the address block
+    _paint(d, relief.name, NAVY, ppmm)
+    f3 = font(2.6, ppmm)
     for i, line in enumerate(c.address):
-        d.text((_px(5.0, ppmm), _px(45.0 + 3.2 * i, ppmm)), line, font=f3, fill=NAVY, anchor="ls")
+        d.text((_px(5.0, ppmm), _px(45.4 + 3.0 * i, ppmm)), line, font=f3, fill=NAVY, anchor="ls")
     _draw_rings(d, bubbles, p, ppmm, mirror=False)
     return img
 
@@ -374,8 +353,8 @@ def _tri(poly: Polygon) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _low_regions(outline: Polygon, raised: list[Polygon]) -> list[Polygon]:
-    """Base-plane regions = outline minus raised islands, built from the raised rings themselves
-    (exact coordinates -> watertight). Supports raised polygons nested in engraved cut-outs."""
+    """Base-plane regions = outline minus raised/recessed polygons, built from their own rings
+    (exact coordinates -> watertight). Supports polygons nested in the holes of others."""
     inner = [(Polygon(r), q) for q in raised for r in q.interiors]
     holders = {
         id(q): any(ring.contains(q) for ring, owner in inner if owner is not q) for q in raised
@@ -398,8 +377,14 @@ def _low_regions(outline: Polygon, raised: list[Polygon]) -> list[Polygon]:
     return regions
 
 
-def build_mesh(p: CardParams, bubbles: list[Bubble], raised_card: BaseGeometry | None) -> CardMesh:
-    """Single shell: bottom z=0, base plane z=base, raised plane z=base+relief (front only)."""
+def build_mesh(
+    p: CardParams,
+    bubbles: list[Bubble],
+    raised_card: BaseGeometry | None,
+    recess_card: BaseGeometry | None = None,
+) -> CardMesh:
+    """Single shell: bottom z=0, base plane z=base, raised plane z=base+relief and recessed
+    plane z=base-recess_depth (front only)."""
     W, H, zb, zt = p.width, p.height, p.base_thickness, p.total_thickness
     outline = outline_polygon(p, bubbles)
     raised: list[Polygon] = []
@@ -409,6 +394,11 @@ def build_mesh(p: CardParams, bubbles: list[Bubble], raised_card: BaseGeometry |
         keep = outline.buffer(-p.relief_margin)
         if not all(keep.contains(q) for q in raised):
             raise ValueError("raised feature closer than relief_margin to the card edge/hole")
+    recess: list[Polygon] = []
+    if recess_card is not None and p.recess_depth > 0 and not recess_card.is_empty:
+        g = affinity.affine_transform(recess_card, [1, 0, 0, -1, -W / 2, H / 2])
+        recess = [orient(q, 1.0) for q in parts(g)]
+    zf = zb - p.recess_depth
     vs: list[np.ndarray] = []
     us: list[np.ndarray] = []
     groups: dict[str, list[np.ndarray]] = {"front": [], "back": [], "edge": []}
@@ -444,12 +434,16 @@ def build_mesh(p: CardParams, bubbles: list[Bubble], raised_card: BaseGeometry |
     for q in parts(outline):
         face(q, 0.0, "back", uv_back, flip=True)
         walls(q, 0.0, zb, "edge", uv_front)
-    low = _low_regions(outline, raised) if raised else parts(outline)
+    cut = raised + recess
+    low = _low_regions(outline, cut) if cut else parts(outline)
     for q in low:
         face(q, zb, "front", uv_front)
     for q in raised:
         face(q, zt, "front", uv_front)
         walls(q, zb, zt, "front", uv_front)  # wall colour = texture colour at the rim
+    for q in recess:  # engraved: floor below the base plane, walls wound inwards
+        face(q, zf, "front", uv_front)
+        walls(orient(q, -1.0), zf, zb, "front", uv_front)
     return CardMesh(
         np.vstack(vs),
         np.vstack(us),
@@ -485,12 +479,27 @@ def write_obj_package(
             tmp.unlink()
 
 
-def shade_relief(front: Image.Image, raised: BaseGeometry, ppmm: float) -> Image.Image:
-    """Preview only: fake lighting from top-left so raised areas read as relief."""
-    mask = Image.new("L", front.size, 0)
-    d = ImageDraw.Draw(mask)
-    _paint(d, raised, 255, ppmm, hole=0)  # type: ignore[arg-type]
-    h = np.asarray(mask.filter(ImageFilter.GaussianBlur(0.12 * ppmm)), dtype=float) / 255
+def shade_relief(
+    front: Image.Image, raised: BaseGeometry, recess: BaseGeometry, ppmm: float
+) -> Image.Image:
+    """Preview only: fake lighting from top-left so raised (+) and recessed (-) areas read."""
+
+    def mask_of(geom: BaseGeometry) -> np.ndarray:
+        m = Image.new("L", front.size, 0)
+        _paint(ImageDraw.Draw(m), geom, 255, ppmm, hole=0)  # type: ignore[arg-type]
+        return np.asarray(m, dtype=float) / 255
+
+    h = mask_of(raised) - mask_of(recess)
+    h = (
+        np.asarray(
+            Image.fromarray(((h + 1) * 127.5).astype("uint8")).filter(
+                ImageFilter.GaussianBlur(0.12 * ppmm)
+            ),
+            dtype=float,
+        )
+        / 127.5
+        - 1
+    )
     gy, gx = np.gradient(h)
     lit = -(gx + gy)
     lit = lit / max(np.percentile(np.abs(lit), 99.7), 1e-9)
@@ -506,13 +515,14 @@ def write_preview(
     back: Image.Image,
     bubbles: list[Bubble],
     raised: BaseGeometry,
+    recess: BaseGeometry,
     ppmm: float,
 ) -> None:
     scale = 1000 / p.width  # px per mm
     w, h = round(p.width * scale), round(p.height * scale)
     outline = rounded_mask_polygon(p, bubbles)
     sheet = Image.new("RGB", (w * 2 + 90, h + 60), (214, 220, 230))
-    front_shaded = shade_relief(front, raised, ppmm) if p.relief > 0 else front
+    front_shaded = shade_relief(front, raised, recess, ppmm) if p.relief > 0 else front
     for k, img in enumerate((front_shaded, back)):  # back texture is already the view from behind
         small = img.resize((w, h), Image.LANCZOS)
         mask = Image.new("L", (w, h), 0)
@@ -526,7 +536,11 @@ def write_preview(
 
 
 def write_step(
-    path: Path, p: CardParams, bubbles: list[Bubble], raised_card: BaseGeometry | None
+    path: Path,
+    p: CardParams,
+    bubbles: list[Bubble],
+    raised_card: BaseGeometry | None,
+    recess_card: BaseGeometry | None = None,
 ) -> bool:
     try:
         import cadquery as cq
@@ -553,6 +567,14 @@ def write_step(
             for r in q.interiors:
                 wp = wp.polyline(list(r.coords)[:-1]).close()
             s = s.union(wp.extrude(p.relief))
+    if recess_card is not None and p.recess_depth > 0:
+        g = affinity.affine_transform(recess_card, [1, 0, 0, -1, -p.width / 2, p.height / 2])
+        for q in parts(g.simplify(0.01)):
+            wp = cq.Workplane("XY").workplane(offset=p.base_thickness - p.recess_depth)
+            wp = wp.polyline(list(q.exterior.coords)[:-1]).close()
+            for r in q.interiors:
+                wp = wp.polyline(list(r.coords)[:-1]).close()
+            s = s.cut(wp.extrude(p.recess_depth))
     cq.exporters.export(s, str(path))
     return True
 
@@ -641,11 +663,13 @@ def main() -> int:
         p = replace(p, n_bubbles=a.bubbles)
     if a.relief is not None:
         p = replace(p, relief=a.relief)
+        if a.relief == 0:  # flat control variant: plain plate, nothing recessed either
+            p = replace(p, recess_depth=0.0)
     p.validate()
     bubbles = layout_bubbles(p)
     content = CardContent.load(a.content)
     logo = trim_logo(Image.open(a.logo))
-    rel = build_front_relief(content.name, p.min_feature, content.monogram)
+    rel = build_front_relief(content.name, p.min_feature, content.doemens, content.bjcp, p.width)
 
     a.out.mkdir(parents=True, exist_ok=True)
     part = a.part_number + ("-flat" if p.relief == 0 else "") + ("-holes" if bubbles else "")
@@ -653,7 +677,7 @@ def main() -> int:
 
     front = render_front(p, content, logo, bubbles, a.ppmm, rel)
     back = render_back(p, content, logo, bubbles, a.ppmm)
-    mesh = build_mesh(p, bubbles, rel.raised)
+    mesh = build_mesh(p, bubbles, rel.raised, rel.recess)
     geo = mesh.geometry()
 
     geo.export(a.out / f"{stem}.stl")
@@ -665,9 +689,11 @@ def main() -> int:
         a.ppmm,
         f"NCFAI card, seed tag {seed_tag(p.seed)}, units mm, texture {a.ppmm:g} px/mm",
     )
-    write_preview(a.out / f"{stem}_preview.png", p, front, back, bubbles, rel.raised, a.ppmm)
+    write_preview(
+        a.out / f"{stem}_preview.png", p, front, back, bubbles, rel.raised, rel.recess, a.ppmm
+    )
     try:
-        step_ok = write_step(a.out / f"{stem}.step", p, bubbles, rel.raised)
+        step_ok = write_step(a.out / f"{stem}.step", p, bubbles, rel.raised, rel.recess)
     except Exception as exc:  # STEP is secondary; keep the print package
         print(f"STEP failed: {exc!r}")
         step_ok = False

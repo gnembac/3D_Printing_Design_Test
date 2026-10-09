@@ -1,21 +1,20 @@
 # NCFAI-Visitenkarte – 3D-gedrucktes Unikat (EXP)
 
-**Stand:** 2026-10-09 (Rev. 8: Siegel entfernt, Textblock zentriert und kleiner) · **Revision:** EXP (nicht freigegeben)
+**Stand:** 2026-10-09 (Rev. 9: Logo oben mittig, DOEMENS erhaben silber, BJCP vertieft, Name unten) · **Revision:** EXP (nicht freigegeben)
 **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A (Herstellerdaten, Anhaltswerte)
 
-## 1 Anforderungen → Umsetzung (Rev. 5)
+## 1 Anforderungen → Umsetzung (Rev. 9)
 
 | Anforderung | Umsetzung |
 |---|---|
 | 85 × 55 mm | exakt 85 × 55 mm, Ecken R4, ein Körper (eine Schale) |
-| Dicke max. 2,5 mm | **Grundplatte 2,0 mm** (= Wandminimum PAC-HP) **+ 0,5 mm Relief (nur Vorderseite) = 2,5 mm** nominal |
-| Schrift erhaben **und** vertieft | *Erhaben:* Name „Gunter / Nembach“ (8,4 mm, Strich ≈ 1,3 mm). *Vertieft:* aktuell **nichts** – Gravurleiste und NCFAI-Siegel wurden auf Wunsch entfernt (Siegel per `monogram` in der Content-JSON wieder zuschaltbar: erhabene Platte 23 × 9 mm, „NCFAI“ 5,6 mm graviert) |
-| Textblock | Firmenzeile „Nembach Consulting – Flavour & AI“ mittig; darunter **zentriert** zwei kleine Zeilen (2,9 mm fett, Strich ≈ 0,4 mm, flach gedruckt) in Markenfarben (aus den Logos abgegriffen, `estimated`): „**DOEMENS** BIERSOMMELIER“ (Grün #A5CC54 / Blau #004489) und „**BJCP** Beer Judge“ (Blau #1A4561), je mit feinem Akzentstrich (Grün bzw. BJCP-Bernstein #E7A33D). Adresse links bündig. Kontrast Grün auf Weiß ≈ 1,8 : 1 (`estimated`) → Erstmuster prüfen |
-| Banner „AI · Robotics · Beer“ | entfernt; stattdessen feine Farbverlauf-Linie unter dem Logo/Namen |
-| Hopfendolde | entfernt |
-| Rückseite links | NCFAI-Logo mittig in der linken Hälfte; **Roboterkopf** oberhalb, **Mikrochip** unterhalb (Farbverlauf, flach – auf der Rückseite ist kein Relief möglich, die 0,5 mm der 2,5-mm-Hülle liegen auf der Vorderseite) |
-| Rückseite rechts | QR-Code auf die Landing Page (29 × 29 Module à 1,2 mm = 34,8 mm, ECC Q, Ruhezone 4 Module, Schwarz auf Weiß) + URL im Klartext |
-| Unikat | Kennung/Seed nur noch im Dateinamen (Seed-Tag); **keine** pro Karte unterschiedliche Geometrie mehr (Hopfenschuppen, Bläschen, ID wurden auf Wunsch entfernt). Optional: `--bubbles N` (seed-basierte Löcher) |
+| Dicke max. 2,5 mm | **Grundplatte 2,0 mm** + **0,5 mm Relief (nur Vorderseite) = 2,5 mm** nominal |
+| Firmenlogo | NCFAI-Logo (flach, Farbe) **oben mittig**, darunter Farbverlauf-Linie und zentrierte Firmenzeile |
+| DOEMENS BIERSOMMELIER | **erhaben** (+0,5 mm), eine Zeile über die Kartenbreite, **silber** (Verlauf #CDCDCF → #8C8C91, aus dem Doemens-Screenshot geschätzt), keine Linie |
+| BJCP Beer Judge | blaue Fläche **auf der Hauptebene** (Verlauf #006898 → #004878, aus dem BJCP-Screenshot), Schrift „BJCP / BEER / JUDGE“ **weiß und vertieft** (−0,5 mm unter die Hauptebene), keine Linie |
+| Name | „Gunter Nembach“ **erhaben** (navy) unten links **oberhalb** der Adresse „Heubacher Hauptstr. 33“ |
+| Rückseite | unverändert: Logo mittig links, Roboterkopf oben, Mikrochip unten (flach), QR-Code rechts mit URL |
+| Relief-Schrift | **DejaVu Sans Bold** (kräftigere, gleichmäßigere Striche als Liberation Sans) |
 
 ## 2 Feinheits-Regeln im Modell (Herstellerdaten Supplier CN-A, konservativ)
 
@@ -29,12 +28,20 @@
 | Farbregistrierung | `ASSUMPTION` ± 0,3 mm | Farbe wird aus derselben Vektorgeometrie wie das Relief erzeugt; Rillengrund/Rand-Farben liegen innerhalb der Flächen |
 | Kein Schrumpfungsausgleich | – | erst nach Messdaten |
 
+### Abweichungen von den konservativen Anbieterwerten (bewusst, DFM-Rückfrage zwingend)
+
+| Punkt | Wert hier | Anbieter (Supplier CN-A) | Folge |
+|---|---|---|---|
+| Relief-/Gravurtiefe | 0,5 mm | Designregel 0,8 mm, MJF-Artikel 0,5 mm | 2,0 + 0,8 > 2,5 mm |
+| Breite erhabener/vertiefter Striche | ≥ 0,7 mm (Mindestfilter), Buchstaben 5,2–5,4 mm DejaVu Bold | 0,8 mm (Artikel 0,5 mm) | größere Schrift passt nicht auf die Karte |
+| Restwand unter den vertieften BJCP-Buchstaben | **1,5 mm** (2,0 − 0,5) | PAC-HP-Seite 2,0 mm; MJF allgemein ≤ 50 mm: 1,5 mm | örtlich dünner als das PAC-HP-Wandminimum; alternativ BJCP-Platte erhaben + Gravur bis auf 2,0 mm (wandsicher) |
+
 ## 3 Verzug (Geometrieentscheidung)
 
 | Maßnahme | Wirkung (nicht gemessen, k.A.) |
 |---|---|
 | Ebene Platte, gleichmäßig 2,0 mm, Ecken R4 | gleichmäßige Abkühlung, keine Spannungsspitzen |
-| Relief nur 0,5 mm, nur Name (ca. 3 % der Fläche), ≥ 3 mm vom Rand | begrenzte Asymmetrie des Querschnitts |
+| Relief nur 0,5 mm, Name + DOEMENS (ca. 7 % der Fläche), ≥ 3 mm vom Rand | begrenzte Asymmetrie des Querschnitts |
 | Rückseite völlig eben | Auflagefläche |
 | Löcher entfallen (`n_bubbles = 0`) | keine Perforation (optional per Parameter) |
 | **Offen:** einseitiges Relief kann Verzug erhöhen | Kontrollkarte `--relief 0` (2,0 mm eben) → EX-001 |
@@ -56,7 +63,7 @@
 
 ## 5 Reproduktion
 
-Personendaten (Adresse, URL) liegen **nicht im Git**: `private/` ist ignoriert; `card_content.example.json` zeigt das Format (Felder `name`, `company`, `qualification`, `address`, `url`, `credentials`).
+Personendaten (Adresse, URL, Texte) liegen **nicht im Git**: `private/` ist ignoriert; `card_content.example.json` zeigt das Format (Felder `name`, `company`, `qualification`, `address`, `url`, `doemens`, `bjcp`).
 
 ```bash
 pip install numpy pillow shapely mapbox-earcut trimesh networkx lxml segno zxing-cpp fonttools   # optional: cadquery (STEP)
