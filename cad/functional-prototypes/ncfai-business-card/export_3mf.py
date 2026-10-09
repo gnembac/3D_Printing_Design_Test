@@ -2,8 +2,8 @@
 
 Two variants (which one the service reads is `k.A.`: check the order preview, else use the other):
 
-* texture : 3MF Materials Extension `texture2d` (front/back PNG embedded), exact UV mapping -
-            highest colour fidelity, but needs a consumer that reads textures.
+* texture : 3MF Materials Extension `texture2d`, ONE atlas PNG (front on top, back below),
+            exact UV mapping - highest colour fidelity, needs a consumer that reads textures.
 * vcolor  : 3MF Materials Extension `colorgroup` = per-vertex colours on a densely triangulated
             mesh (max. triangle area, boundaries unchanged) - no texture needed.
 
@@ -100,63 +100,45 @@ def _package(
 
 
 def write_texture_3mf(path: Path, mm: MergedMesh, front: Image.Image, back: Image.Image) -> None:
-    """Texture variant: one tex2coord per face corner, front/back texture groups + white edge."""
-    nf = len(mm.faces)
-    coords = mm.corner_uv.reshape(-1, 2)  # corner k of face i -> index 3 i + k
-    front_idx = np.where(mm.labels == 0)[0]
-    back_idx = np.where(mm.labels == 1)[0]
+    """Texture variant with ONE texture (atlas): front on top, back below.
 
-    def group(gid: int, tid: int, idx: np.ndarray) -> str:
-        pts = coords[(idx[:, None] * 3 + np.arange(3)).reshape(-1)]
-        body = "".join(f'<m:tex2coord u="{u:.6f}" v="{v:.6f}"/>' for u, v in pts)
-        return f'<m:texture2dgroup id="{gid}" texid="{tid}">{body}</m:texture2dgroup>'
-
-    parts = [_model_xml_head()]
-    parts.append(
-        '<m:texture2d id="1" path="/3D/Textures/front.png" contenttype="image/png" '
-        'tilestyleu="clamp" tilestylev="clamp" filter="linear"/>'
-        '<m:texture2d id="2" path="/3D/Textures/back.png" contenttype="image/png" '
-        'tilestyleu="clamp" tilestylev="clamp" filter="linear"/>'
+    Many 3MF consumers evaluate only a single texture per object, so both faces share one image
+    (u unchanged, v remapped: front -> 0.5..1, back -> 0..0.5; origin lower left). Edge faces
+    sample a white pixel of the front texture (card corner). One texture2dgroup, no materials.
+    """
+    w, h = front.size
+    atlas = Image.new("RGB", (w, 2 * h), (255, 255, 255))
+    atlas.paste(front.convert("RGB"), (0, 0))  # image top = v 1.0 -> front
+    atlas.paste(back.convert("RGB"), (0, h))  # image bottom half -> back
+    uv = mm.corner_uv.copy()  # (m, 3, 2)
+    lab = mm.labels
+    uv[lab == 0, :, 1] = 0.5 + 0.5 * uv[lab == 0, :, 1]
+    uv[lab == 1, :, 1] = 0.5 * uv[lab == 1, :, 1]
+    uv[lab == 2] = (0.002, 0.998)  # front corner pixel = white
+    coords = uv.reshape(-1, 2)
+    body = "".join(f'<m:tex2coord u="{u:.6f}" v="{v:.6f}"/>' for u, v in coords)
+    tri = "".join(
+        f'<triangle v1="{a}" v2="{b}" v3="{c}" pid="2" p1="{k}" p2="{k + 1}" p3="{k + 2}"/>'
+        for k, (a, b, c) in zip(range(0, 3 * len(mm.faces), 3), mm.faces.tolist(), strict=True)
     )
-    parts.append(group(3, 1, front_idx))
-    parts.append(group(4, 2, back_idx))
-    parts.append('<basematerials id="5"><base name="edge" displaycolor="#FFFFFF"/></basematerials>')
-    tri: list[str] = []
-    front_rank = {int(i): r for r, i in enumerate(front_idx)}
-    back_rank = {int(i): r for r, i in enumerate(back_idx)}
-    for i in range(nf):
-        a, b, c = mm.faces[i]
-        lab = mm.labels[i]
-        if lab == 0:
-            r = front_rank[i] * 3
-            tri.append(
-                f'<triangle v1="{a}" v2="{b}" v3="{c}" pid="3" p1="{r}" p2="{r + 1}" p3="{r + 2}"/>'
-            )
-        elif lab == 1:
-            r = back_rank[i] * 3
-            tri.append(
-                f'<triangle v1="{a}" v2="{b}" v3="{c}" pid="4" p1="{r}" p2="{r + 1}" p3="{r + 2}"/>'
-            )
-        else:
-            tri.append(f'<triangle v1="{a}" v2="{b}" v3="{c}" pid="5" p1="0"/>')
-    parts.append(
-        '<object id="6" name="ncfai-card" type="model">'
-        f"<mesh>{_vertices_xml(mm.verts)}<triangles>{''.join(tri)}</triangles></mesh></object>"
-        '</resources><build><item objectid="6"/></build></model>'
+    xml = (
+        _model_xml_head()
+        + '<m:texture2d id="1" path="/3D/Textures/atlas.png" contenttype="image/png" '
+        'tilestyleu="clamp" tilestylev="clamp" filter="linear"/>'
+        + f'<m:texture2dgroup id="2" texid="1">{body}</m:texture2dgroup>'
+        + '<object id="3" name="ncfai-card" type="model">'
+        + f"<mesh>{_vertices_xml(mm.verts)}<triangles>{tri}</triangles></mesh></object>"
+        + '</resources><build><item objectid="3"/></build></model>'
     )
     rels = (
         '<?xml version="1.0" encoding="UTF-8"?>'
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        f'<Relationship Target="/3D/Textures/front.png" Id="tex1" Type="{REL_TEXTURE}"/>'
-        f'<Relationship Target="/3D/Textures/back.png" Id="tex2" Type="{REL_TEXTURE}"/>'
+        f'<Relationship Target="/3D/Textures/atlas.png" Id="tex1" Type="{REL_TEXTURE}"/>'
         "</Relationships>"
     )
-    blobs = {}
-    for name, img in (("3D/Textures/front.png", front), ("3D/Textures/back.png", back)):
-        buf = BytesIO()
-        img.save(buf, "PNG", optimize=True)
-        blobs[name] = buf.getvalue()
-    _package(path, "".join(parts), blobs, rels)
+    buf = BytesIO()
+    atlas.save(buf, "PNG", optimize=True)
+    _package(path, xml, {"3D/Textures/atlas.png": buf.getvalue()}, rels)
 
 
 def sample(img_arr: np.ndarray, u: np.ndarray, v: np.ndarray) -> np.ndarray:

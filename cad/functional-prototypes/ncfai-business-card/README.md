@@ -85,9 +85,10 @@ in der Bestellvorschau auf Farbe prüfen, sonst Vertex-Farb-3MF.
 
 | Datei (`…_EXP_MJF_PAC-HP_2026-10-09.3mf`) | Farbträger | Größe | Prüfung |
 |---|---|---|---|
-| `NCFAI-card_unikat001-texture_…` | 3MF-Materials-Extension `texture2d` (Vorder-/Rückseite 3 400 × 2 200 px, 1 016 dpi) mit exakter UV-Zuordnung | ≈ 2,6 MB, 64 020 Dreiecke | wasserdicht, 1 Schale (trimesh) |
+| `NCFAI-card_unikat001-texture_…` | 3MF-Materials-Extension `texture2d`, **eine** Atlas-Textur 3 400 × 4 400 px (1 016 dpi; Vorderseite oben, Rückseite unten) mit exakter UV-Zuordnung | ≈ 2,6 MB, 64 020 Dreiecke | wasserdicht, 1 Schale (trimesh); Rück-/Vorderseite unabhängig aus der Datei nachgerendert |
 | `NCFAI-card_unikat001-vcolor_…` | `colorgroup` = Farbe je Ecke (Vertex), Netz fein trianguliert (≤ 0,02 mm², Randpunkte ≤ 0,4 mm) | ≈ 20 MB, 830 324 Dreiecke | wasserdicht, 1 Schale; QR im Rückrender (Farbinterpolation) lesbar |
 
+- **Rev. 12a:** Eine erste Fassung enthielt zwei getrennte Texturen (Vorder-/Rückseite); manche Viewer werten nur eine Textur je Objekt aus und zeigten die Vorderseite auch hinten. Daher jetzt ein gemeinsamer Atlas (Kanten-Flächen nutzen ein weißes Pixel).
 - Die flache Kontrollkarte (`--relief 0`) erzeugt dieselben zwei Varianten mit Suffix `-flat`.
 - Grenzen: Vertex-Farben lösen kleine Schrift (2,6 mm Adresse) gröber auf als die Textur (≈ 0,15 mm Dreieckskante); Farbtreue
   sRGB → MJF-Prozessfarbe `k.A.` (Erstmuster); `requiredextensions` ist bewusst nicht gesetzt, damit Leser ohne
