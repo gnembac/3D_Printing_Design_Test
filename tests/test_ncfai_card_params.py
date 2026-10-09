@@ -75,7 +75,7 @@ def test_relief_mesh_is_single_watertight_shell() -> None:
     from ncfai_card import build_mesh
 
     p = CardParams()
-    rel = build_front_relief("Ada Lee", p.min_feature)
+    rel = build_front_relief("Ada Lee", p.min_feature, "NCFAI")
     assert rel.raised.area > 50
     # engraved monogram letters = holes in the raised plaque
     assert any(len(q.interiors) > 0 for q in parts(rel.plaque))

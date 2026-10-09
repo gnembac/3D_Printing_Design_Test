@@ -65,7 +65,7 @@ BRAND = {  # institution -> (word colour, title colour, underline accent)
     "DOEMENS": (DOEMENS_GREEN, DOEMENS_BLUE, DOEMENS_GREEN),
     "BJCP": (BJCP_BLUE, BJCP_BLUE, BJCP_AMBER),
 }
-CRED_SIZE = 4.2  # mm, credential lines (flat colour)
+CRED_SIZE = 2.9  # mm, credential lines (flat colour)
 QR_DARK = (0, 0, 0)  # K black: max. contrast (supplier colour mapping `k.A.`)
 QR_LOGO_GAP = 0.0  # logo may use the left half up to the QR quiet zone
 QR_RIGHT, QR_TOP = 7.0, 7.0  # module area: distance from right edge / top, mm
@@ -81,7 +81,7 @@ class CardContent:
     qualification: str
     address: tuple[str, ...]
     url: str = ""
-    monogram: str = "NCFAI"  # engraved into the raised plaque bottom right
+    monogram: str = ""  # optional: engraved into a raised plaque bottom right (off by default)
     credentials: tuple[tuple[str, str], ...] = ()  # (institution, title), e.g. (DOEMENS, ...)
 
     @staticmethod
@@ -93,7 +93,7 @@ class CardContent:
             d["qualification"],
             tuple(d["address"]),
             d.get("url", ""),
-            d.get("monogram", "NCFAI"),
+            d.get("monogram", ""),
             tuple((i, ti) for i, ti in d.get("credentials", [])),
         )
 
@@ -197,17 +197,18 @@ def _paint_gradient(
 
 
 def _draw_credential(
-    d: ImageDraw.ImageDraw, inst: str, title: str, x: float, baseline: float, ppmm: float
+    d: ImageDraw.ImageDraw, inst: str, title: str, cx: float, baseline: float, ppmm: float
 ) -> None:
-    """`INSTITUTION Title` in the institution's brand colours + thin accent underline."""
+    """`INSTITUTION Title` centred on x = cx (mm), brand colours + thin accent underline."""
     word_c, title_c, accent = BRAND.get(inst.upper(), (NAVY, NAVY, NAVY))
     f = font(CRED_SIZE, ppmm)
-    d.text((x * ppmm, baseline * ppmm), inst, font=f, fill=word_c, anchor="ls")
-    x_title = x * ppmm + d.textlength(inst + " ", font=f)
-    d.text((x_title, baseline * ppmm), title, font=f, fill=title_c, anchor="ls")
-    x_end = x_title + d.textlength(title, font=f)
+    w_inst = d.textlength(inst + " ", font=f)
+    total = w_inst + d.textlength(title, font=f)
+    x0 = cx * ppmm - total / 2
+    d.text((x0, baseline * ppmm), inst, font=f, fill=word_c, anchor="ls")
+    d.text((x0 + w_inst, baseline * ppmm), title, font=f, fill=title_c, anchor="ls")
     d.rectangle(
-        [_px(x, ppmm), _px(baseline + 0.8, ppmm), round(x_end), _px(baseline + 1.3, ppmm) - 1],
+        [round(x0), _px(baseline + 0.6, ppmm), round(x0 + total), _px(baseline + 1.05, ppmm) - 1],
         fill=accent,
     )
 
@@ -238,10 +239,14 @@ def render_front(
         d.line([(x, y0), (x, y1)], fill=gradient((x / ppmm - 5.0) / (p.width - 10.0)))
     # flat (printed, no relief) text: strokes too thin for 0.8 mm relief
     d.text(
-        (_px(5.0, ppmm), _px(27.9, ppmm)), c.company, font=font(3.3, ppmm), fill=NAVY, anchor="ls"
+        (_px(p.width / 2, ppmm), _px(27.9, ppmm)),
+        c.company,
+        font=font(3.3, ppmm),
+        fill=NAVY,
+        anchor="ms",  # centred on the card
     )
     for i, (inst, title) in enumerate(c.credentials):
-        _draw_credential(d, inst, title, 5.0, 33.4 + 5.8 * i, ppmm)
+        _draw_credential(d, inst, title, p.width / 2, 33.4 + 5.0 * i, ppmm)
     f3 = font(2.7, ppmm)
     for i, line in enumerate(c.address):
         d.text((_px(5.0, ppmm), _px(45.0 + 3.2 * i, ppmm)), line, font=f3, fill=NAVY, anchor="ls")

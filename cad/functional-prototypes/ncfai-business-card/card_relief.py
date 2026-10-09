@@ -201,7 +201,7 @@ class FrontRelief:
     removed_area: float  # mm2 changed by enforce_min_feature (should be small)
 
 
-def build_front_relief(name: str, min_feature: float, monogram: str = "NCFAI") -> FrontRelief:
+def build_front_relief(name: str, min_feature: float, monogram: str = "") -> FrontRelief:
     first, _, last = name.partition(" ")
     name_geom = unary_union(
         [
