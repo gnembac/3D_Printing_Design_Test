@@ -12,3 +12,4 @@ mapbox-earcut
 segno
 zxing-cpp
 fonttools
+triangle

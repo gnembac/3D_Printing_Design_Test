@@ -120,3 +120,35 @@ def test_icons_respect_min_feature() -> None:
     for g in (robot_head(0, 0), chip_icon(0, 0)):
         kept = enforce_min_feature(g, 0.8)
         assert kept.symmetric_difference(g).area / g.area < 0.08
+
+
+def test_3mf_exports_are_single_watertight_shells(tmp_path: Path) -> None:
+    for mod in ("shapely", "trimesh", "fontTools", "mapbox_earcut", "PIL", "triangle", "lxml"):
+        pytest.importorskip(mod)
+    import zipfile
+
+    import trimesh
+    from card_relief import build_front_relief
+    from export_3mf import merge_mesh, write_texture_3mf, write_vcolor_3mf
+    from ncfai_card import build_mesh
+    from PIL import Image
+
+    p = CardParams()
+    rel = build_front_relief("Ada Lee", p.min_feature)
+    img = Image.new("RGB", (340, 220), (200, 120, 40))
+    coarse = build_mesh(p, [], rel.raised, rel.recess)
+    mm = merge_mesh(coarse.verts, coarse.uv, coarse.groups)
+    tex = tmp_path / "t.3mf"
+    write_texture_3mf(tex, mm, img, img)
+    xml = zipfile.ZipFile(tex).read("3D/3dmodel.model").decode()
+    assert "texture2dgroup" in xml and xml.count("<triangle ") == len(mm.faces)
+    assert trimesh.load(tex, force="mesh").is_watertight
+
+    dense = build_mesh(p, [], rel.raised, rel.recess, max_area=0.5, segment=1.0)
+    mmd = merge_mesh(dense.verts, dense.uv, dense.groups)
+    vc = tmp_path / "v.3mf"
+    write_vcolor_3mf(vc, mmd, img, img, p.width, p.height)
+    xml = zipfile.ZipFile(vc).read("3D/3dmodel.model").decode()
+    assert "colorgroup" in xml and xml.count("<triangle ") == len(mmd.faces)
+    m = trimesh.load(vc, force="mesh")
+    assert m.is_watertight and len(m.split()) == 1

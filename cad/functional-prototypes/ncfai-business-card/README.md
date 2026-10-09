@@ -1,6 +1,6 @@
 # NCFAI-Visitenkarte – 3D-gedrucktes Unikat (EXP)
 
-**Stand:** 2026-10-09 (Rev. 11: zentrierte Zeilen ohne Spiegelstrich, 4,2 mm) · **Revision:** EXP (nicht freigegeben)
+**Stand:** 2026-10-09 (Rev. 12: 3MF-Export Vollfarbe für JLC3DP) · **Revision:** EXP (nicht freigegeben)
 **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A (Herstellerdaten, Anhaltswerte)
 
 ## 1 Anforderungen → Umsetzung (Rev. 11)
@@ -75,3 +75,22 @@ Laufzeit ≈ 30 s (STEP-Export). Exit-Code 1 bei fehlgeschlagenen Prüfungen.
 | Slicer-/Anbietervorschau, Farbmuster, Ebenheit, Handy-Scan am Druck | **offen** (EX-001) |
 
 Keine Bestellung, kein Upload, keine Anfrage ohne ausdrückliche Freigabe.
+
+## 7 3MF für JLC3DP (Vollfarbe, PAC-HP)
+
+Anbieter-Vorgabe (JLC3DP-Hilfe, Stand 29.12.2023, vor Bestellung prüfen): Datei **als 3MF** und **mit allen Farbdaten**, sonst
+wird **grau** gefertigt; je Datei **ein** Teil/eine Schale. Das Skript erzeugt zwei 3MF-Varianten (beide: eine wasserdichte
+Schale, Einheit mm, ohne Stützen/Zusatzkörper). **Welche der Anbieter einliest, ist `k.A.`** → zuerst Textur-3MF hochladen,
+in der Bestellvorschau auf Farbe prüfen, sonst Vertex-Farb-3MF.
+
+| Datei (`…_EXP_MJF_PAC-HP_2026-10-09.3mf`) | Farbträger | Größe | Prüfung |
+|---|---|---|---|
+| `NCFAI-card_unikat001-texture_…` | 3MF-Materials-Extension `texture2d` (Vorder-/Rückseite 3 400 × 2 200 px, 1 016 dpi) mit exakter UV-Zuordnung | ≈ 2,6 MB, 64 020 Dreiecke | wasserdicht, 1 Schale (trimesh) |
+| `NCFAI-card_unikat001-vcolor_…` | `colorgroup` = Farbe je Ecke (Vertex), Netz fein trianguliert (≤ 0,02 mm², Randpunkte ≤ 0,4 mm) | ≈ 20 MB, 830 324 Dreiecke | wasserdicht, 1 Schale; QR im Rückrender (Farbinterpolation) lesbar |
+
+- Die flache Kontrollkarte (`--relief 0`) erzeugt dieselben zwei Varianten mit Suffix `-flat`.
+- Grenzen: Vertex-Farben lösen kleine Schrift (2,6 mm Adresse) gröber auf als die Textur (≈ 0,15 mm Dreieckskante); Farbtreue
+  sRGB → MJF-Prozessfarbe `k.A.` (Erstmuster); `requiredextensions` ist bewusst nicht gesetzt, damit Leser ohne
+  Materials-Extension die Geometrie noch laden (dann grau).
+- Dateien enthalten Personendaten (Adresse, URL) → bleiben in `private/` (nicht im Git).
+- Reproduktion: `ncfai_card.py … [--dense-area 0.02] [--no-3mf]` (zusätzlich `triangle`, `lxml`, `networkx` installieren).

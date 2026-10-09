@@ -28,6 +28,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
+import shapely
 import trimesh
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from shapely import affinity
@@ -45,6 +46,12 @@ from card_params import (  # noqa: E402
 )
 from card_qr import QrLayout, make_layout  # noqa: E402
 from card_relief import FrontRelief, build_front_relief, chip_icon, parts, robot_head  # noqa: E402
+from export_3mf import (  # noqa: E402
+    merge_mesh,
+    raster_check,
+    write_texture_3mf,
+    write_vcolor_3mf,
+)
 
 # Colours sampled from the NCFAI logo (`estimated`, sRGB; process colour will differ)
 ORANGE = (253, 138, 36)
@@ -341,9 +348,16 @@ class CardMesh:
         return m
 
 
-def _tri(poly: Polygon) -> tuple[np.ndarray, np.ndarray]:
-    """Earcut triangulation (no Steiner points), all triangles CCW -> normal +z."""
-    v2, f = trimesh.creation.triangulate_polygon(poly, engine="earcut")
+def _tri(poly: Polygon, max_area: float | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """Triangulation with all triangles CCW (normal +z). Default: earcut without Steiner points.
+    With `max_area` (mm2): quality triangulation with interior points but NO new boundary
+    points ('Y'), so neighbouring faces and walls still share exactly the same ring vertices."""
+    if max_area:
+        v2, f = trimesh.creation.triangulate_polygon(
+            poly, triangle_args=f"pqYa{max_area}", engine="triangle"
+        )
+    else:
+        v2, f = trimesh.creation.triangulate_polygon(poly, engine="earcut")
     v2, f = np.asarray(v2, dtype=float), np.asarray(f)
     a, b, c = v2[f[:, 0]], v2[f[:, 1]], v2[f[:, 2]]
     cross = (b[:, 0] - a[:, 0]) * (c[:, 1] - a[:, 1]) - (b[:, 1] - a[:, 1]) * (c[:, 0] - a[:, 0])
@@ -380,14 +394,19 @@ def build_mesh(
     bubbles: list[Bubble],
     raised_card: BaseGeometry | None,
     recess_card: BaseGeometry | None = None,
+    max_area: float | None = None,
+    segment: float | None = None,
 ) -> CardMesh:
     """Single shell: bottom z=0, base plane z=base, raised plane z=base+relief and recessed
     plane z=base-recess_depth (front only)."""
     W, H, zb, zt = p.width, p.height, p.base_thickness, p.total_thickness
     outline = outline_polygon(p, bubbles)
+    if segment:  # dense ring vertices -> no long triangles, vertex colours stay local
+        outline = shapely.segmentize(outline, segment)
     raised: list[Polygon] = []
     if raised_card is not None and p.relief > 0 and not raised_card.is_empty:
         g = affinity.affine_transform(raised_card, [1, 0, 0, -1, -W / 2, H / 2])
+        g = shapely.segmentize(g, segment) if segment else g
         raised = [orient(q, 1.0) for q in parts(g)]
         keep = outline.buffer(-p.relief_margin)
         if not all(keep.contains(q) for q in raised):
@@ -395,6 +414,7 @@ def build_mesh(
     recess: list[Polygon] = []
     if recess_card is not None and p.recess_depth > 0 and not recess_card.is_empty:
         g = affinity.affine_transform(recess_card, [1, 0, 0, -1, -W / 2, H / 2])
+        g = shapely.segmentize(g, segment) if segment else g
         recess = [orient(q, 1.0) for q in parts(g)]
     zf = zb - p.recess_depth
     vs: list[np.ndarray] = []
@@ -415,7 +435,7 @@ def build_mesh(
         count[0] += len(v3)
 
     def face(poly: Polygon, z: float, mat: str, uvf, flip: bool = False) -> None:  # noqa: ANN001
-        v2, f = _tri(poly)
+        v2, f = _tri(poly, max_area)
         add(np.column_stack([v2, np.full(len(v2), z)]), uvf(v2), f[:, ::-1] if flip else f, mat)
 
     def walls(poly: Polygon, z0: float, z1: float, mat: str, uvf) -> None:  # noqa: ANN001
@@ -639,6 +659,60 @@ def check(
     return rows
 
 
+def export_3mf_files(
+    a: argparse.Namespace,
+    p: CardParams,
+    stem: str,
+    part: str,
+    mesh: CardMesh,
+    rel: FrontRelief,
+    bubbles: list[Bubble],
+    front: Image.Image,
+    back: Image.Image,
+    content: CardContent,
+) -> list[tuple[str, str, bool]]:
+    """Write the texture and vertex-colour 3MF files and verify them (geometry + QR)."""
+    rows: list[tuple[str, str, bool]] = []
+    mm = merge_mesh(mesh.verts, mesh.uv, mesh.groups)
+    tex_path = a.out / f"{stem.replace(part, part + '-texture')}.3mf"
+    vc_path = a.out / f"{stem.replace(part, part + '-vcolor')}.3mf"
+    write_texture_3mf(tex_path, mm, front, back)
+    dense = build_mesh(p, bubbles, rel.raised, rel.recess, max_area=a.dense_area, segment=0.4)
+    mmd = merge_mesh(dense.verts, dense.uv, dense.groups)
+    v, f, lab, colors, cidx = write_vcolor_3mf(vc_path, mmd, front, back, p.width, p.height)
+    for label, path in (("texture", tex_path), ("vcolor", vc_path)):
+        try:
+            m = trimesh.load(path, force="mesh")
+            ok = bool(m.is_watertight) and len(m.split()) == 1
+            size = path.stat().st_size / 1e6
+            res = f"{size:.1f} MB, {len(m.faces)} tri, watertight={m.is_watertight}"
+        except Exception as exc:  # parser limitations must not hide the written file
+            ok, res = False, f"load failed: {exc!r}"
+        rows.append((f"3MF {label}: one watertight shell", res, ok))
+    refined = trimesh.Trimesh(v, f, process=False)
+    rows.append(
+        (
+            "3MF vcolor refined mesh watertight",
+            f"{refined.is_watertight}",
+            bool(refined.is_watertight),
+        )
+    )
+    if content.url:
+        qr = make_layout(content.url, p.width - QR_RIGHT, QR_TOP, a.ppmm)
+        img = raster_check(v, f, lab, colors, cidx, qr.keep_out, p.width, p.height)
+        try:
+            import zxingcpp
+
+            ok = any(
+                r.text == content.url for r in zxingcpp.read_barcodes(np.asarray(img.convert("L")))
+            )
+            label = "3MF vcolor: QR decodes (per-vertex colours interpolated, 0.05 mm raster)"
+            rows.append((label, "ok" if ok else "no", ok))
+        except ImportError:
+            pass
+    return rows
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--content", type=Path, required=True)
@@ -652,6 +726,8 @@ def main() -> int:
     ap.add_argument(
         "--ppmm", type=float, default=40.0, help="texture pixels per mm (40 = 1016 dpi)"
     )
+    ap.add_argument("--dense-area", type=float, default=0.02, help="max. triangle area, mm2")
+    ap.add_argument("--no-3mf", action="store_true", help="skip the two 3MF colour exports")
     a = ap.parse_args()
 
     p = CardParams()
@@ -697,6 +773,8 @@ def main() -> int:
         step_ok = False
 
     rows = check(p, bubbles, geo, rel)
+    if not a.no_3mf:
+        rows += export_3mf_files(a, p, stem, part, mesh, rel, bubbles, front, back, content)
     if content.url:
         qr = make_layout(content.url, p.width - QR_RIGHT, QR_TOP, a.ppmm)
         rows.append(
