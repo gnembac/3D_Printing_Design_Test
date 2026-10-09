@@ -21,7 +21,29 @@ COLORS_HEX: dict[str, str] = {
     "white": "#F5F5F5",
     "amber": "#D98A0B",
     "counterplate": "#3A3A3A",
+    "onepiece": "#C8C8C8",  # single-material variant (no colour information)
 }
+
+# Minimum embossed/engraved feature width and depth for JLC3DP MJF nylon (general MJF guide),
+# manufacturer data (indicative), JLC3DP help pages, age 1-3 years -> re-verify before ordering.
+PAC_HP_MIN_FEATURE = 0.8
+
+
+def pac_hp_variant(p: BadgeParams) -> BadgeParams:
+    """Variant for JLC3DP PAC-HP full-colour nylon (MJF): details >= 0.8 mm, floors >= 1.0 mm."""
+    from dataclasses import replace
+
+    return replace(
+        p,
+        base_thickness=3.2,  # floor above magnet pocket 1.0 mm
+        plate_t=3.2,  # counter plate floor 1.0 mm
+        small_shadow_depth=0.0,  # no groove for small text (0.4 mm would be < 0.8 mm minimum)
+        hop_scales=False,  # scale lines (0.47 mm) below minimum width
+        awn_width=PAC_HP_MIN_FEATURE,
+        outline_width=PAC_HP_MIN_FEATURE,
+        location_size=5.4,  # keeps stroke width >= 0.8 mm
+    )
+
 
 _BJCP_ID = re.compile(r"^[A-Z]\d{4}$")
 
@@ -53,6 +75,12 @@ class BadgeParams:
     relief: float = 0.8  # raised text / symbols above fields
     relief_name: float = 1.2  # raised first/last name (extra step for 3D effect)
     shadow_offset: float = 0.8  # engraved drop-shadow groove offset (x:+, y:-)
+    small_shadow_depth: float = 0.4  # groove depth for small text on orange (mono: 0.8)
+    title_size: float = 5.2  # BEER JUDGE
+    location_size: float = 5.0
+    hop_scales: bool = True  # engraved scale lines on the hop cone
+    awn_width: float = 0.55  # barley awns
+    outline_width: float = 0.6  # black contour around hop / barley
 
     # magnet fastening (badge side + counter plate inside the shirt)
     magnet_d: float = 10.0  # disc magnet, e.g. N35/N42 NdFeB (data sheet: k.A.)
@@ -124,6 +152,11 @@ class BadgeParams:
             "relief": (0.4, 1.6),
             "relief_name": (0.4, 2.0),
             "shadow_offset": (0.4, 1.2),
+            "small_shadow_depth": (0.0, 0.8),
+            "title_size": (3.0, 7.0),
+            "location_size": (3.0, 7.0),
+            "awn_width": (0.3, 1.5),
+            "outline_width": (0.3, 1.5),
             "magnet_d": (4.0, 15.0),
             "magnet_h": (1.0, 4.0),
             "pocket_clearance": (0.1, 0.6),
@@ -137,6 +170,7 @@ class BadgeParams:
             "color_layer",
             "relief",
             "relief_name",
+            "small_shadow_depth",
             "pocket_depth",
             "plate_t",
         ):

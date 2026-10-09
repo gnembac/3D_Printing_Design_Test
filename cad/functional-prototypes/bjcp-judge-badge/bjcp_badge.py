@@ -27,7 +27,7 @@ from pathlib import Path
 import cadquery as cq
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from badge_params import BadgeParams  # noqa: E402
+from badge_params import BadgeParams, pac_hp_variant  # noqa: E402
 
 Solids = dict[str, cq.Workplane]
 
@@ -80,7 +80,9 @@ def _outline(sil: cq.Workplane, width: float, h: float) -> cq.Workplane:
     return grown.cut(sil)
 
 
-def _hop(cx: float, cy: float, s: float, z0: float, h: float) -> tuple[cq.Workplane, cq.Workplane]:
+def _hop(
+    cx: float, cy: float, s: float, z0: float, h: float, scales: bool = True
+) -> tuple[cq.Workplane, cq.Workplane | None]:
     """Hop cone hanging from a stem. Returns (silhouette, engraved scale arcs)."""
     r = 1.9 * s
     rows = [
@@ -98,23 +100,26 @@ def _hop(cx: float, cy: float, s: float, z0: float, h: float) -> tuple[cq.Workpl
             x, y = cx + dx * s, cy + dy * s
             c = _circle(x, y, r, z0, h)
             sil = c if sil is None else sil.union(c)
+            if not scales:
+                continue
             ring = _circle(x, y, r - 0.1, z0 + h / 2, h).cut(
                 _circle(x, y, r - 0.6 * s - 0.1, z0 + h / 2 - 1, h + 2)
             )
             half = lower_half.translate((x, y - 40, z0 - 1))
             arc = ring.intersect(half)
             arcs = arc if arcs is None else arcs.union(arc)
-    assert sil is not None and arcs is not None
+    assert sil is not None
     stem = _rrect(0.9 * s, 3.2 * s, 0.3, cx, cy + 12.0 * s, z0, h)
     lx, ly = cx + 2.4 * s, cy + 13.0 * s
     leaf = _rot(
         _slab(cq.Workplane("XY").center(lx, ly).ellipse(2.3 * s, 1.0 * s), z0, h), lx, ly, 25
     )
-    return sil.union(stem).union(leaf), arcs.intersect(sil)
+    hop = sil.union(stem).union(leaf)
+    return hop, (arcs.intersect(sil) if arcs is not None else None)
 
 
 def _barley(
-    cx: float, cy: float, s: float, z0: float, h: float
+    cx: float, cy: float, s: float, z0: float, h: float, awn_w: float = 0.55
 ) -> tuple[cq.Workplane, cq.Workplane]:
     """Barley ear. Returns (grains + stem [amber], short awns [black])."""
     ear = _rrect(0.9 * s, 12.0 * s, 0.3, cx, cy + 6.0 * s, z0, h)
@@ -134,7 +139,7 @@ def _barley(
             x0, y0 = gx + sign * 0.5 * s, y + 1.6 * s
             x1, y1 = x0 + sign * 1.0 * s, y0 + 2.6 * s
             awn = _poly(
-                [(x0, y0), (x0 + sign * 0.55, y0 + 0.1), (x1 + sign * 0.55, y1), (x1, y1)], z0, h
+                [(x0, y0), (x0 + sign * awn_w, y0 + 0.1), (x1 + sign * awn_w, y1), (x1, y1)], z0, h
             )
             awns = awn if awns is None else awns.union(awn)
     assert awns is not None
@@ -142,10 +147,10 @@ def _barley(
         awns = awns.union(
             _poly(
                 [
-                    (cx + dx - 0.25, cy + 14.8 * s),
-                    (cx + dx + 0.25, cy + 14.8 * s),
-                    (cx + dx * 3 + 0.25, cy + 16.0 * s),
-                    (cx + dx * 3 - 0.25, cy + 17.2 * s),
+                    (cx + dx - awn_w / 2, cy + 14.8 * s),
+                    (cx + dx + awn_w / 2, cy + 14.8 * s),
+                    (cx + dx * 3 + awn_w / 2, cy + 16.0 * s),
+                    (cx + dx * 3 - awn_w / 2, cy + 16.0 * s),
                 ],
                 z0,
                 h,
@@ -190,8 +195,8 @@ def build(p: BadgeParams) -> Solids:
     assert white is not None
     black_specs = [  # symmetric head block (centred on x = 0)
         (p.org, 11.0, 25.0),
-        (p.title, 5.2, 16.4),
-        (p.location, 5.0, -17.4),
+        (p.title, p.title_size, 16.4),
+        (p.location, p.location_size, -17.4),
         (p.id_display, 9.0, -25.2),
     ]
     black_text: cq.Workplane | None = None
@@ -207,17 +212,19 @@ def build(p: BadgeParams) -> Solids:
     for txt, size, y in name_specs:
         foot = _text(p, txt, size, 0, y, zf, p.color_layer)
         blue = blue.cut(foot.translate((dx, dy, 0)).cut(foot))
-    shallow = p.color_layer / 2
-    for txt, size, y in black_specs:
-        foot = _text(p, txt, size, 0, y, zf + shallow, shallow)
+    shallow = p.small_shadow_depth
+    for txt, size, y in black_specs if shallow > 0 else []:
+        foot = _text(p, txt, size, 0, y, zf + p.color_layer - shallow, shallow)
         orange = orange.cut(foot.translate((dx * 0.7, dy * 0.7, 0)).cut(foot))
 
     # --- hops (left) and barley (right), mirrored about x = 0 ----------------------------
     sx_pos, sy_pos, scale = 28.0, 13.2, 0.78
-    hop_sil, hop_arcs = _hop(-sx_pos, sy_pos, scale, zr, h)
-    hop_fill = hop_sil.cut(hop_arcs.translate((0, 0, h / 2)))
-    barley, awns = _barley(sx_pos, sy_pos, scale, zr, h)
-    black_syms = _outline(hop_sil, 0.6, h).union(_outline(barley, 0.6, h)).union(awns)
+    hop_sil, hop_arcs = _hop(-sx_pos, sy_pos, scale, zr, h, p.hop_scales)
+    # arcs span z0+h/2 .. z0+1.5h -> engraved h/2 deep
+    hop_fill = hop_sil.cut(hop_arcs) if hop_arcs is not None else hop_sil
+    barley, awns = _barley(sx_pos, sy_pos, scale, zr, h, p.awn_width)
+    ow = p.outline_width
+    black_syms = _outline(hop_sil, ow, h).union(_outline(barley, ow, h)).union(awns)
     amber = hop_fill.union(barley)
 
     return {
@@ -228,6 +235,23 @@ def build(p: BadgeParams) -> Solids:
         "amber": amber,
         "counterplate": build_counterplate(p).translate((0, -(b + 14.0), 0)),
     }
+
+
+def fuse_onepiece(solids: Solids, keep_faces: bool = False) -> cq.Workplane:
+    """Fuse all badge colour bodies (not the counter plate) into ONE connected solid.
+
+    Required by print services that accept one part / one shell per file.
+    keep_faces=True keeps coplanar faces of different colour bodies separate (no clean),
+    needed to assign face colours afterwards. Raises ValueError if not a single solid.
+    """
+    parts = [wp for name, wp in solids.items() if name != "counterplate"]
+    fused = parts[0]
+    for wp in parts[1:]:
+        fused = fused.union(wp, clean=not keep_faces)
+    n = len(fused.solids().vals())
+    if n != 1:
+        raise ValueError(f"fused badge has {n} shells, expected 1")
+    return fused
 
 
 def build_counterplate(p: BadgeParams) -> cq.Workplane:
@@ -343,7 +367,45 @@ def export_all(
     f3 = out / "3mf" / f"BJCP_badge_{tag}.3mf"
     write_3mf(f3, solids, p)
     written.append(f3)
+    one = {"onepiece": fuse_onepiece(solids)}
+    mono = replace(
+        p, relief=1.2, small_shadow_depth=0.8
+    )  # single-material: shape must carry contrast
+    solids_mono = build(mono)
+    one_mono = {"onepiece": fuse_onepiece(solids_mono)}
+    f_m = out / "stl" / f"BJCP_badge-onepiece-mono_{tag}.stl"
+    cq.exporters.export(one_mono["onepiece"], str(f_m), tolerance=0.01, angularTolerance=0.2)
+    written.append(f_m)
+    f_m3 = out / "3mf" / f"BJCP_badge-onepiece-mono_{tag}.3mf"
+    write_3mf(f_m3, one_mono, mono)
+    written.append(f_m3)
+    f_one = out / "stl" / f"BJCP_badge-onepiece_{tag}.stl"
+    cq.exporters.export(one["onepiece"], str(f_one), tolerance=0.01, angularTolerance=0.2)
+    written.append(f_one)
+    f_one3 = out / "3mf" / f"BJCP_badge-onepiece_{tag}.3mf"
+    write_3mf(f_one3, one, p)
+    written.append(f_one3)
     return written
+
+
+def export_pac_hp(p: BadgeParams, out: Path, date: str) -> int:
+    """Colour-body STLs + split one-piece STL (for export_colour_onepiece.py) + counter plate."""
+    solids = build(p)
+    problems = check_fit(p, solids)
+    for msg in problems:
+        print("FIT PROBLEM:", msg)
+    (out / "stl").mkdir(parents=True, exist_ok=True)
+    tag = f"EXP_MJF_PAC-HP_{date}"
+    for name, wp in solids.items():
+        f = out / "stl" / f"BJCP_badge-{name}_{tag}.stl"
+        cq.exporters.export(wp, str(f), tolerance=0.01, angularTolerance=0.2)
+        print("wrote", f)
+    split = out / "stl" / f"BJCP_badge-onepiece-split_{tag}.stl"
+    cq.exporters.export(
+        fuse_onepiece(solids, keep_faces=True), str(split), tolerance=0.01, angularTolerance=0.2
+    )
+    print("wrote", split)
+    return 1 if problems else 0
 
 
 def main() -> int:
@@ -355,6 +417,7 @@ def main() -> int:
     ap.add_argument("--bjcp-id", default=d.bjcp_id)
     ap.add_argument("--location", default=d.location)
     ap.add_argument("--material", default="PLA")
+    ap.add_argument("--variant", choices=("fdm", "pac-hp"), default="fdm")
     ap.add_argument("--date", default=dt.date.today().isoformat())
     ns = ap.parse_args()
     p = replace(
@@ -364,6 +427,8 @@ def main() -> int:
         bjcp_id=ns.bjcp_id,
         location=ns.location,
     )
+    if ns.variant == "pac-hp":
+        return export_pac_hp(pac_hp_variant(p), ns.out, ns.date)
     solids = build(p)
     problems = check_fit(p, solids)
     for msg in problems:
