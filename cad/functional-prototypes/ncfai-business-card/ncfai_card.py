@@ -27,7 +27,7 @@ from pathlib import Path
 
 import numpy as np
 import trimesh
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 from shapely.geometry import Point, Polygon, box
 from shapely.geometry.polygon import orient
 
@@ -40,6 +40,7 @@ from card_params import (  # noqa: E402
     seed_int,
     seed_tag,
 )
+from card_qr import QrLayout, make_layout  # noqa: E402
 
 # Colours sampled from the NCFAI logo (`estimated`, sRGB; process colour will differ)
 ORANGE = (253, 138, 36)
@@ -53,6 +54,8 @@ FONT_BOLD = (
 )
 PRINT_MARGIN = 1.5  # keep ink away from the card edge (colour/geometry registration `ASSUMPTION`)
 RING_GAP, RING_W = 0.6, 0.9  # colour ring around each hole, mm
+QR_DARK = (0, 0, 0)  # K black: max. contrast (supplier colour mapping `k.A.`)
+QR_RIGHT, QR_TOP = 7.0, 7.0  # module area: distance from right edge / top, mm
 MIN_STROKE = 0.4  # smallest printed colour stroke, mm (`ASSUMPTION`, verify with supplier)
 
 
@@ -62,11 +65,14 @@ class CardContent:
     company: str
     qualification: str
     address: tuple[str, ...]
+    url: str = ""
 
     @staticmethod
     def load(path: Path) -> CardContent:
         d = json.loads(path.read_text(encoding="utf-8"))
-        return CardContent(d["name"], d["company"], d["qualification"], tuple(d["address"]))
+        return CardContent(
+            d["name"], d["company"], d["qualification"], tuple(d["address"]), d.get("url", "")
+        )
 
 
 def lerp(a: tuple[int, ...], b: tuple[int, ...], t: float) -> tuple[int, int, int]:
@@ -158,12 +164,23 @@ def render_front(
 
 
 def render_back(p: CardParams, c: CardContent, bubbles: list[Bubble], ppmm: float) -> Image.Image:
-    """Back face as seen from behind (mirrored x). Seeded bubble foam + unique ID label."""
+    """Back face as seen from behind (not mirrored: this is the picture the viewer sees).
+
+    Left column: unique ID + foam bubbles around the hole rings; right: large QR code (c.url).
+    """
     img = Image.new("RGB", (_px(p.width, ppmm), _px(p.height, ppmm)), (255, 255, 255))
     d = ImageDraw.Draw(img)
     rng = random.Random(seed_int(p.seed) + 1)
     holes = [(p.width - b.x, b.y, b.d / 2 + RING_GAP + RING_W) for b in bubbles]
-    label = (14.0, 19.0, p.width - 14.0, 36.0)
+    keep: list[tuple[float, float, float, float]] = [(5.0, 4.0, 38.0, 26.0)]  # ID text block
+    qr = None
+    if c.url:
+        qr = make_layout(c.url, p.width - QR_RIGHT, QR_TOP, ppmm)
+        qx0, qy0, qx1, qy1 = qr.keep_out
+        keep += [(qx0, qy0, qx1, qy1), (qx0, qy1, qx1, qy1 + 8.0)]  # quiet zone + caption
+        for hx, hy, hr in holes:  # rings are ink: they must not touch the quiet zone
+            if hx + hr > qx0 - 0.5 and hy + hr > qy0 and hy - hr < qy1 + 8.0:
+                raise ValueError("hole ring intrudes into the QR quiet zone; change seed/layout")
     placed: list[tuple[float, float, float]] = []
     for _ in range(1500):
         r = rng.choice((0.9, 1.2, 1.6, 2.2, 3.0, 4.2)) * rng.uniform(0.85, 1.15)
@@ -171,7 +188,10 @@ def render_back(p: CardParams, c: CardContent, bubbles: list[Bubble], ppmm: floa
         y = rng.uniform(PRINT_MARGIN + r, p.height - PRINT_MARGIN - r)
         if any(math.hypot(x - hx, y - hy) < hr + r + 0.8 for hx, hy, hr in holes):
             continue
-        if label[0] - r < x < label[2] + r and label[1] - r < y < label[3] + r:
+        if any(
+            k[0] - r - 0.5 < x < k[2] + r + 0.5 and k[1] - r - 0.5 < y < k[3] + r + 0.5
+            for k in keep
+        ):
             continue
         if any(math.hypot(x - ox, y - oy) < (or_ + r) * 0.8 for ox, oy, or_ in placed):
             continue
@@ -192,21 +212,56 @@ def render_back(p: CardParams, c: CardContent, bubbles: list[Bubble], ppmm: floa
                 fill=lerp(col, (255, 255, 255), 0.65),
             )
     _draw_rings(d, bubbles, p, ppmm, mirror=True)
-    # label with unique ID
-    lx0, ly0, lx1, ly1 = (_px(v, ppmm) for v in label)
-    d.rounded_rectangle([lx0, ly0, lx1, ly1], radius=_px(2.0, ppmm), fill=(255, 255, 255))
-    cx = _px(p.width / 2, ppmm)
-    for text, size, y in (
-        ("UNIKAT", 5.4, 20.4),
-        (f"No. {seed_tag(p.seed)}", 3.0, 27.0),
-    ):
-        f = font(size, ppmm)
-        w = d.textlength(text, font=f)
-        d.text((cx - w / 2, _px(y, ppmm)), text, font=f, fill=NAVY)
-    f = font(2.4, ppmm)
-    w = d.textlength(c.company, font=f)
-    d.text((cx - w / 2, _px(31.8, ppmm)), c.company, font=f, fill=NAVY)
+    # unique ID block (white backing keeps text readable if a bubble overlaps)
+    d.text((_px(5.0, ppmm), _px(5.0, ppmm)), "UNIKAT", font=font(5.2, ppmm), fill=NAVY)
+    d.text(
+        (_px(5.0, ppmm), _px(11.8, ppmm)),
+        f"No. {seed_tag(p.seed)}",
+        font=font(2.8, ppmm),
+        fill=NAVY,
+    )
+    f = font(2.6, ppmm)
+    for i, line in enumerate(c.company.replace(" \u2013 ", "\n").split("\n")):
+        d.text((_px(5.0, ppmm), _px(16.2 + 3.6 * i, ppmm)), line, font=f, fill=NAVY)
+    if qr is not None:
+        m = qr.module_mm
+        for r_i, row in enumerate(qr.matrix):
+            for c_i, dark in enumerate(row):
+                if dark:
+                    x0, y0 = _px(qr.x + c_i * m, ppmm), _px(qr.y + r_i * m, ppmm)
+                    d.rectangle(
+                        [x0, y0, x0 + _px(m, ppmm) - 1, y0 + _px(m, ppmm) - 1], fill=QR_DARK
+                    )
+        cap = c.url.removeprefix("https://").removeprefix("http://").rstrip("/")
+        fc = font(2.8, ppmm)
+        w = d.textlength(cap, font=fc)
+        cx = qr.x + qr.size / 2
+        d.text((_px(cx, ppmm) - w / 2, _px(qr.keep_out[3] + 0.4, ppmm)), cap, font=fc, fill=NAVY)
     return img
+
+
+def verify_qr(back: Image.Image, qr: QrLayout, url: str, ppmm: float) -> list[tuple[str, bool]]:
+    """Decode the rendered texture, also after simulated blur and ink spread (`estimated`)."""
+    try:
+        import zxingcpp
+    except ImportError:
+        return []
+    x0, y0, x1, y1 = (_px(v, ppmm) for v in qr.keep_out)
+    crop = back.crop((x0, y0, x1, y1)).convert("L")
+    out = []
+    cases = {
+        "as rendered": crop,
+        "blur 0.25 mm": crop.filter(ImageFilter.GaussianBlur(0.25 * ppmm)),
+        "ink spread +0.10 mm/side": crop.filter(ImageFilter.MinFilter(2 * round(0.10 * ppmm) + 1)),
+        "ink loss -0.10 mm/side": crop.filter(ImageFilter.MaxFilter(2 * round(0.10 * ppmm) + 1)),
+        "scan at 8 px/mm": crop.resize(
+            (round(crop.width / ppmm * 8), round(crop.height / ppmm * 8))
+        ),
+    }
+    for name, im in cases.items():
+        res = zxingcpp.read_barcodes(np.asarray(im))
+        out.append((name, any(r.text == url for r in res)))
+    return out
 
 
 def _inside_outline(p: CardParams, x: float, y: float, r: float, mirror: bool) -> bool:
@@ -459,6 +514,19 @@ def main() -> int:
     step_ok = write_step(a.out / f"{stem}.step", p, bubbles)
 
     rows = check(p, bubbles, geo)
+    if content.url:
+        qr = make_layout(content.url, p.width - QR_RIGHT, QR_TOP, a.ppmm)
+        rows.append(
+            (
+                f"QR module {qr.module_mm:.2f} mm, {qr.n}x{qr.n}, ECC Q, quiet zone 4 modules",
+                f"code area {qr.size:.1f} mm",
+                qr.module_mm >= 1.0,
+            )
+        )
+        vq = verify_qr(back, qr, content.url, a.ppmm)
+        rows += [(f"QR decodes: {n}", "ok" if ok else "no", ok) for n, ok in vq]
+        if not vq:
+            print("QR decode test: skipped (zxing-cpp not installed)")
     print(f"seed={p.seed} tag={seed_tag(p.seed)} bubbles={len(bubbles)}")
     for b in bubbles:
         print(f"  bubble x={b.x:6.2f} y={b.y:6.2f} d={b.d:.1f}")

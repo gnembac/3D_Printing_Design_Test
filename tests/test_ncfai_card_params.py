@@ -44,3 +44,16 @@ def test_flat_control_variant_has_no_holes() -> None:
 def test_overfull_zone_raises() -> None:
     with pytest.raises(ValueError):
         layout_bubbles(replace(CardParams(), n_bubbles=60))
+
+
+def test_qr_layout_geometry() -> None:
+    pytest.importorskip("segno")
+    from card_qr import QUIET_MODULES, make_layout
+
+    q = make_layout("https://example.com/", right=78.0, top=7.0, ppmm=40.0)
+    assert q.n in (25, 29, 33)  # version 2-4 at ECC Q
+    assert abs(q.module_mm * 40 - round(q.module_mm * 40)) < 1e-9  # integer pixels per module
+    assert q.module_mm >= 1.0
+    assert abs(q.x + q.size - 78.0) < 1e-9
+    x0, _, x1, _ = q.keep_out
+    assert abs((q.x - x0) - QUIET_MODULES * q.module_mm) < 1e-9 and x1 > q.x + q.size

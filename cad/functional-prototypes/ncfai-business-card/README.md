@@ -1,6 +1,6 @@
 # NCFAI-Visitenkarte – 3D-gedrucktes Unikat (EXP)
 
-**Stand:** 2026-10-09 · **Revision:** EXP (nicht freigegeben) · **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A
+**Stand:** 2026-10-09 (Rev. 2: QR-Code Rückseite) · **Revision:** EXP (nicht freigegeben) · **Prozess/Material:** MJF, PAC-HP Nylon (Vollfarbe), Supplier CN-A
 
 ## 1 Anforderungen → Umsetzung
 
@@ -10,6 +10,7 @@
 | Dicke max. 2,5 mm | **2,2 mm nominal**: 2,2 + 0,3 (Toleranz) = 2,5; 2,2 ≥ 2,0 (Wandminimum PAC-HP). Fenster 2,0–2,2 mm (`card_params.py` erzwingt es) |
 | Farbmaterial, Logo gut sichtbar | PAC-HP Nylon (MJF, Vollfarbe, Herstellerdaten Supplier CN-A). Weißer Grund = höchster Kontrast für den Logo-Verlauf |
 | wenig Verzug | gleichmäßige Dicke, symmetrischer Querschnitt (kein Relief/keine Rippen), Ecken R4, Löcher ≥ 4 mm vom Rand, Kontrollvariante ohne Löcher (`--bubbles 0`) |
+| QR-Code (Rückseite) | Link auf die Landing Page (`url` in der Content-JSON), 29 × 29 Module, **Modul 1,2 mm → Code 34,8 mm**, ECC Q (25 %), Ruhezone 4 Module (frei von Farbe), Module reines Schwarz auf Weiß, Modulgröße auf ganze Texturpixel gerastert; Klartext-URL darunter |
 | Unikat | Seed-basiert: Lage/Größe der durchgehenden „Bierbläschen“-Löcher (Vorderseite, 7 Stk.), Bläschen-Muster und Kennung `No. <Hash>` auf der Rückseite. Gleicher Seed = identische Karte |
 
 ## 2 Geometrie-Entscheidung (Verzug)
@@ -35,14 +36,16 @@ Verzugsursachen/Hebel (Literatur-/Erfahrungswissen, **nicht gemessen**): ungleic
 | Dateiformat | OBJ + MTL + 2 PNG (ZIP) enthält die Verläufe als Textur; ob PAC-HP Texturen liest, ist laut Herstellerseite nur für „Full-Color-Resin“ ausdrücklich dokumentiert (OBJ+MTL+PNG), für PAC-HP „OBJ oder 3MF“ → **vor Bestellung beim Support klären** |
 | Farbe nur einseitig/ungleich verteilt | Einfluss auf Verzug `k.A.` |
 | Gewicht ≈ 10 g | `estimated` (10 094 mm³ × ≈ 1,0 g/cm³, Dichte `ASSUMPTION`) |
-| STEP-Master | wird erzeugt, sobald `cadquery` installiert ist (Umgebung: nicht verfügbar → **offen**) |
+| STEP-Master | erzeugt (1 Volumenkörper, gültig, 10 094 mm³); Datei liegt in `private/` |
+| QR-Scanbarkeit im Druck | Simulation (`estimated`): Unschärfe 0,25 mm, Farbzu-/abnahme ±0,10 mm je Kante, Scan mit 8 px/mm → alle dekodiert. Reale Porosität/Farbaufnahme von PAC-HP `k.A.` → Erstmuster mit Handy testen; Schwarz-Abbildung des Anbieters `k.A.` |
+| QR-Ziel | URL steht fest im Druck; später nicht änderbar → Weiterleitung auf der Landing Page ermöglichen |
 
 ## 4 Reproduktion
 
 Personendaten (Adresse) liegen **nicht im Git**: `private/` ist ignoriert; `card_content.example.json` zeigt das Format.
 
 ```bash
-pip install numpy pillow shapely mapbox-earcut trimesh networkx lxml   # optional: cadquery
+pip install numpy pillow shapely mapbox-earcut trimesh networkx lxml segno zxing-cpp   # optional: cadquery (STEP)
 python cad/functional-prototypes/ncfai-business-card/ncfai_card.py \
   --content private/ncfai-business-card/card_content.json \
   --logo private/ncfai-business-card/ncfai_logo.png \
