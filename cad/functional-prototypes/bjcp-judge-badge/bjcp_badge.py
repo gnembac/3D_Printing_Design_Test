@@ -6,7 +6,7 @@ Stack (z, mm; multiples of the 0.1 mm layer height):
     3.0 - 3.8   orange fields (upper/lower) and blue name band
                 (engraved drop-shadow grooves cut down to the black plate)
     3.8 - 5.0   raised white name (GUNTER large / NEMBACH small), 1.2 mm
-    3.8 - 4.6   raised black text, amber hop + barley (black outline), 0.8 mm
+    3.8 - 4.6   raised black text, amber barley + green hop (black outline), 0.8 mm
 
 A separate counter plate (worn inside the shirt) carries the mating magnets.
 
@@ -225,14 +225,14 @@ def build(p: BadgeParams) -> Solids:
     barley, awns = _barley(sx_pos, sy_pos, scale, zr, h, p.awn_width)
     ow = p.outline_width
     black_syms = _outline(hop_sil, ow, h).union(_outline(barley, ow, h)).union(awns)
-    amber = hop_fill.union(barley)
 
     return {
         "black": black.union(black_text).union(black_syms),
         "orange": orange,
         "blue": blue,
         "white": white,
-        "amber": amber,
+        "amber": barley,  # barley ear (grains + stem)
+        "green": hop_fill,  # hop cone
         "counterplate": build_counterplate(p).translate((0, -(b + 14.0), 0)),
     }
 
@@ -272,7 +272,7 @@ def check_fit(p: BadgeParams, solids: Solids) -> list[str]:
     limit = _ellipse(p.inner_a - p.edge_clearance, p.inner_b - p.edge_clearance, p.z_relief - 1, 9)
     inside = _ellipse(p.inner_a - 0.01, p.inner_b - 0.01, p.z_relief - 1, 9)
     relief: Solids = {}
-    for name in ("black", "white", "amber"):
+    for name in ("black", "white", "amber", "green"):
         feat = solids[name].intersect(relief_zone).intersect(inside)
         relief[name] = feat
         outside = feat.cut(limit)
@@ -401,8 +401,9 @@ def export_pac_hp(p: BadgeParams, out: Path, date: str) -> int:
         cq.exporters.export(wp, str(f), tolerance=0.01, angularTolerance=0.2)
         print("wrote", f)
     split = out / "stl" / f"BJCP_badge-onepiece-split_{tag}.stl"
+    # finer tessellation: at 0.01/0.2 the unclean fuse left a crack at the hop leaf (not watertight)
     cq.exporters.export(
-        fuse_onepiece(solids, keep_faces=True), str(split), tolerance=0.01, angularTolerance=0.2
+        fuse_onepiece(solids, keep_faces=True), str(split), tolerance=0.005, angularTolerance=0.1
     )
     print("wrote", split)
     return 1 if problems else 0

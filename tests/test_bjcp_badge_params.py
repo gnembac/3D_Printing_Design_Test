@@ -51,8 +51,9 @@ def test_rejects_thin_counter_plate_wall() -> None:
 def test_pac_hp_variant_valid_and_meets_minimums() -> None:
     v = pac_hp_variant(BadgeParams())
     v.validate()
-    assert v.base_thickness - v.pocket_depth >= 1.0 - 1e-9  # floor above magnet pocket
-    assert v.plate_t - v.pocket_depth >= 1.0 - 1e-9
+    assert v.base_thickness - v.pocket_depth >= 2.0 - 1e-9  # floor above magnet pocket (2 mm wall)
+    assert v.plate_t - v.pocket_depth >= 2.0 - 1e-9
+    assert v.pocket_clearance >= 0.5  # +-0.3 mm tolerance
     assert v.awn_width >= PAC_HP_MIN_FEATURE and v.outline_width >= PAC_HP_MIN_FEATURE
     assert v.relief >= PAC_HP_MIN_FEATURE and v.shadow_offset >= PAC_HP_MIN_FEATURE
     assert not v.hop_scales  # 0.47 mm scale lines are below the minimum
@@ -64,5 +65,5 @@ def test_geometry_build_if_cadquery_available() -> None:
     import bjcp_badge
 
     solids = bjcp_badge.build(BadgeParams())
-    assert set(solids) == {"black", "orange", "blue", "white", "amber", "counterplate"}
+    assert set(solids) == {"black", "orange", "blue", "white", "amber", "green", "counterplate"}
     assert bjcp_badge.check_fit(BadgeParams(), solids) == []

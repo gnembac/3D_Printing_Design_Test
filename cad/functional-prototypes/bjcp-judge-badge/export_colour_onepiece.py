@@ -2,7 +2,7 @@
 
 For print services that need ONE part/shell per file but accept colour data
 (full-colour resin / nylon with 3MF colours). Face colours are taken from the
-colour body (black/orange/blue/white/amber) whose surface the fused face lies on.
+colour body (black/orange/blue/white/amber/green) whose surface the fused face lies on.
 
 Usage (needs trimesh + rtree + numpy). --stl-dir must hold the five colour-body STLs and
 BJCP_badge-onepiece-split_*.stl (= fuse_onepiece(solids, keep_faces=True) exported as STL):
@@ -22,7 +22,7 @@ import trimesh
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from badge_params import COLORS_HEX  # noqa: E402
 
-BODIES = ("black", "orange", "blue", "white", "amber")
+BODIES = ("black", "orange", "blue", "white", "amber", "green")
 
 
 def _rgb(hex_: str) -> tuple[int, int, int]:
@@ -85,6 +85,11 @@ def main() -> int:
     ns = ap.parse_args()
     tag = f"EXP_{ns.process}_{ns.material}_{ns.date}"
     fused = trimesh.load(ns.stl_dir / f"BJCP_badge-onepiece-split_{tag}.stl", process=True)
+    if not fused.is_watertight:  # tessellation can leave tiny cracks between coplanar sub-faces
+        n_open = int((np.unique(fused.edges_sorted, axis=0, return_counts=True)[1] == 1).sum())
+        area0 = fused.area
+        trimesh.repair.fill_holes(fused)
+        print(f"filled {n_open} open edges, area change {fused.area - area0:+.3f} mm2")
     assert fused.is_watertight and len(fused.split(only_watertight=False)) == 1
     idx = classify_faces(fused, ns.stl_dir, tag)
     ns.out.mkdir(parents=True, exist_ok=True)

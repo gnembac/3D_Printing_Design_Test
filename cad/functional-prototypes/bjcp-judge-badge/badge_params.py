@@ -20,6 +20,7 @@ COLORS_HEX: dict[str, str] = {
     "blue": "#1F4E9E",
     "white": "#F5F5F5",
     "amber": "#D98A0B",
+    "green": "#5B9A2D",  # hop cone (estimated hop green)
     "counterplate": "#3A3A3A",
     "onepiece": "#C8C8C8",  # single-material variant (no colour information)
 }
@@ -30,13 +31,14 @@ PAC_HP_MIN_FEATURE = 0.8
 
 
 def pac_hp_variant(p: BadgeParams) -> BadgeParams:
-    """Variant for JLC3DP PAC-HP full-colour nylon (MJF): details >= 0.8 mm, floors >= 1.0 mm."""
+    """Variant for JLC3DP PAC-HP full-colour nylon (MJF): details >= 0.8 mm, floors >= 2.0 mm."""
     from dataclasses import replace
 
     return replace(
         p,
-        base_thickness=3.2,  # floor above magnet pocket 1.0 mm
-        plate_t=3.2,  # counter plate floor 1.0 mm
+        base_thickness=4.2,  # floor above magnet pocket 2.0 mm (page: wall thickness 2 mm)
+        plate_t=4.2,  # counter plate floor 2.0 mm
+        pocket_clearance=0.5,  # page: tolerance +-0.3 mm -> worst case still >= 0.2 mm play
         small_shadow_depth=0.0,  # no groove for small text (0.4 mm would be < 0.8 mm minimum)
         hop_scales=False,  # scale lines (0.47 mm) below minimum width
         awn_width=PAC_HP_MIN_FEATURE,
@@ -147,7 +149,7 @@ class BadgeParams:
             "half_height": (20.0, 40.0),
             "rim_width": (1.6, 5.0),
             "band_half_height": (6.0, 14.0),
-            "base_thickness": (2.0, 4.0),
+            "base_thickness": (2.0, 5.0),
             "color_layer": (0.4, 2.0),
             "relief": (0.4, 1.6),
             "relief_name": (0.4, 2.0),

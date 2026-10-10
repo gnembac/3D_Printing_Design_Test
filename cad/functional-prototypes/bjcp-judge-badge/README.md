@@ -47,7 +47,8 @@
 | `orange` | Hellorange |
 | `blue` | Mittelblau |
 | `white` | Weiß, **empfohlen nachleuchtend** (Name) – gehärtete Düse, abrasiv; ohne Glow-Effekt dann normales Weiß |
-| `amber` | Bernstein (Hopfen, Gerste) |
+| `amber` | Bernstein (Gerste) |
+| `green` | Grün (Hopfendolde), ab Rev. 2b |
 | `counterplate` | beliebig (z. B. Schwarz/Grau), nicht im Sichtbereich |
 
 ## 5 Marketing-/Wirkungskonzept
@@ -147,13 +148,15 @@ enthalten die Schuppen (Tiefe = halbe Reliefhöhe). Die Dateien vom 2026-10-08 s
 
 ## 12 PAC-HP-Variante (JLC3DP Nylon PAC-HP, Vollfarbe, MJF)
 
-Bestellvorgabe laut JLC3DP-Hilfe (Herstellerdaten, Anhaltswerte, Seiten 1–3 Jahre alt – vor Bestellung prüfen): 3MF mit
+Bestellvorgabe laut JLC3DP-Hilfe und Materialseite (PAC-HP, Stand 2026-09-24: MJF, Wandstärke 2 mm, Toleranz ±0,3 mm bis 100 mm, Bauraum 320×175×225 mm) (Herstellerdaten, Anhaltswerte, Seiten 1–3 Jahre alt – vor Bestellung prüfen): 3MF mit
 Farbdaten (sonst grau), Prägung/Gravur min. 0,8 mm breit und tief, Wandstärke 2 mm (PAC-HP-Seite) bzw. 1,0 mm (MJF-Leitfaden).
 `pac_hp_variant()` (in `badge_params.py`) passt das Modell an:
 
 | Merkmal | Vorher | PAC-HP-Variante |
 |---|---|---|
-| Boden über Magnettaschen (Badge/Gegenplatte) | 0,8 mm | **1,0 mm** (Platte 3,2 mm) |
+| Boden über Magnettaschen (Badge/Gegenplatte) | 0,8 mm | **2,0 mm** (Platte 4,2 mm; Materialseite: Wandstärke 2 mm) |
+| Magnettasche Spiel (Ø) | 0,3 mm | **0,5 mm** (Toleranz ±0,3 mm → min. 0,2 mm Spiel) |
+| Hopfendolde | Bernstein | **Grün** (`#5B9A2D`, `estimated`), Gerste bleibt Bernstein |
 | Gersten-Grannen / Konturlinie | 0,55 / 0,6 mm | **0,8 mm** |
 | Hopfen-Schuppenlinien (0,47 mm) | graviert | **entfallen** (unter Mindestbreite) |
 | Schattennut kleine Schrift (0,4 mm tief) | ja | **entfallen** (unter Mindesttiefe, und schwarzer Schatten verschmierte Ort/ID) |
@@ -165,12 +168,17 @@ Erzeugung: `bjcp_badge.py --variant pac-hp --out <dir>` → Farbkörper-STL + `o
 
 | Datei (…EXP_MJF_PAC-HP_2026-10-09) | Prüfung (trimesh) |
 |---|---|
-| `BJCP_badge-onepiece-colour.3mf` (1 Objekt, Farbe je Dreieck) | wasserdicht, 1 Schale, 27 628 farbige Dreiecke |
-| `BJCP_badge-onepiece-colour.ply` (Flächenfarben) | wasserdicht, 1 Schale, 5 Farben, 26 011 mm³ |
-| `BJCP_badge-counterplate.3mf/.stl` | wasserdicht, 1 Schale, 3,2 mm |
+| `BJCP_badge-onepiece-colour.3mf` (1 Objekt, Farbe je Dreieck) | wasserdicht, 1 Schale, 65 146 farbige Dreiecke, 6 Farben |
+| `BJCP_badge-onepiece-colour.ply` (Flächenfarben) | wasserdicht, 1 Schale, 6 Farben, 32 125 mm³, Höhe 6,2 mm |
+| `BJCP_badge-counterplate.3mf/.stl` | wasserdicht, 1 Schale, 4,2 mm |
 
 `k.A.`: ob JLC3DP die Farbdarstellung im 3MF (basematerials je Dreieck) liest – in der Vorschau der Bestellseite prüfen;
 MJF-Nylon-Farbabweichung; Mindestdetails ggf. aktueller als hier angegeben.
+
+Hinweis Rev. 2b (2026-10-09): Die Grünfärbung des Hopfens (eigener Farbkörper `green`) gilt für alle Varianten, die mit dem
+aktuellen Skript erzeugt werden; **neu erzeugt wurden nur die PAC-HP-Dateien**. Die älteren Einteiler-/Mono-/5-Objekt-Exporte
+vom 2026-10-09 zeigen den Hopfen noch in Bernstein. Der Split-STL für den Farbexport wird fein tesseliert (0,005/0,1), weil
+das Netz sonst am Hopfenblatt einen Riss hat.
 
 ## 10 Offene Punkte / Folge-Exercise
 
